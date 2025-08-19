@@ -152,3 +152,23 @@ def create_comprehensive_plot(img_array, filename):
     
     plt.tight_layout()
     plt.show()
+
+
+def display_image_with_histogram(image):
+    plt.figure(figsize=(12, 6))
+
+    # Display the image
+    plt.subplot(1, 2, 1)
+    plt.imshow(image, cmap='inferno')
+    plt.title('Image')
+    plt.axis('off')
+
+    # Display the histogram
+    plt.subplot(1, 2, 2)
+    plt.hist(image.ravel(), bins=256, color='blue', alpha=0.7)
+    plt.title('Histogram')
+    plt.xlabel('Pixel Intensity')
+    plt.ylabel('Frequency')
+
+    plt.tight_layout()
+    plt.show()
