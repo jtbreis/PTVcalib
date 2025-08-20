@@ -1,8 +1,7 @@
-import os
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-import seaborn as sns
 from pathlib import Path
 
 def read_and_visualize_tiff(folder_path, file_name=None):
@@ -171,4 +170,58 @@ def display_image_with_histogram(image):
     plt.ylabel('Frequency')
 
     plt.tight_layout()
+    plt.show()
+
+def visualize_voroni(image, facets, points):
+    for facet in facets:
+        pts = np.array(facet, np.int32)
+        cv2.fillConvexPoly(image, pts, (np.random.randint(256), np.random.randint(256), np.random.randint(256)))
+        cv2.polylines(image, [pts], True, (0, 0, 0), 1)
+
+    # Draw points
+    for p in points:
+        center = (int(p[0]), int(p[1]))
+        cv2.circle(image, center, 4, (0, 0, 255), -1)
+
+    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.show()
+
+def visualize_center(image, facets, center, center_point):
+    # Draw all facets faintly
+    img_highlight = image.copy()
+    for facet in facets:
+        pts = np.array(facet, np.int32)
+        cv2.fillConvexPoly(img_highlight, pts, (200, 200, 200))
+
+    # Highlight the center facet in red
+    pts_center = np.array(center, np.int32)
+    cv2.fillConvexPoly(img_highlight, pts_center, (255, 0, 0))
+    cv2.polylines(img_highlight, [pts_center], True, (0, 0, 0), 2)
+
+    # Draw the center point as a green dot
+    center_coords = (int(center_point[0]), int(center_point[1]))
+    cv2.circle(img_highlight, center_coords, 6, (0, 255, 0), -1)
+
+    plt.imshow(cv2.cvtColor(img_highlight, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.show()
+
+def visualize_grid_points(image, grid_points):
+    # plt.scatter(center_facet_centroid[0], center_facet_centroid[1], color='red', s=120, marker='x', label='Center Facet Centroid')
+    plt.scatter(grid_points[:, 0], grid_points[:, 1])
+    plt.legend()
+    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.show()
+
+def visualize_matched_facets(matches):
+    plt.figure(figsize=(8, 8))
+    for grid_pt, facet_center in matches:
+        plt.plot([grid_pt[0]*30, facet_center[0]], [grid_pt[1]*30, -facet_center[1]], 'g--', linewidth=1)
+        plt.scatter(grid_pt[0]*30, grid_pt[1]*30, color='blue', s=60, label='Grid Point' if 'Grid Point' not in plt.gca().get_legend_handles_labels()[1] else "")
+        plt.scatter(facet_center[0], -facet_center[1], color='red', s=60, label='Facet Center' if 'Facet Center' not in plt.gca().get_legend_handles_labels()[1] else "")
+    plt.legend()
+    plt.title("Matched Grid Points and Facet Centers")
+    plt.axis("equal")
     plt.show()
