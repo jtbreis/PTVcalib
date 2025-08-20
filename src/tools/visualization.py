@@ -222,7 +222,7 @@ def visualize_matched_facets(matches):
         plt.scatter(grid_pt[0]*30, grid_pt[1]*30, color='blue', s=60, label='Grid Point' if 'Grid Point' not in plt.gca().get_legend_handles_labels()[1] else "")
         plt.scatter(facet_center[0], -facet_center[1], color='red', s=60, label='Facet Center' if 'Facet Center' not in plt.gca().get_legend_handles_labels()[1] else "")
     plt.legend()
-    plt.title("Matched Grid Points and Facet Centers")
+    plt.title("Matched Grid Points (scaled by 30) and Facet Centers")
     plt.axis("equal")
     plt.show()
 

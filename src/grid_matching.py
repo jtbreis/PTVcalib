@@ -3,15 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from tools.visualization import *
+from src.tools.visualization import *
 
-def match_calibration_grid(image, image_points, grid_points, grid_spacing):
+def match_calibration_grid(image, image_points, grid_points, grid_spacing, plot=False):
     """
-    image: input image
+    image: input image make sure it is grayscale
     image_points: numpy array of detected points
     grid_points: numpy array with grid points
     """
-    h, w, _ = image.shape
+    h, w = image.shape
     raw_image = image.copy()
 
     # Step1: Subdiv for Voronoi
@@ -27,10 +27,8 @@ def match_calibration_grid(image, image_points, grid_points, grid_spacing):
 
     # Step2: Find center of all facets
     center_facet, center_point = find_center_facet(facets, centers)
-    visualize_center(image, facets, center_facet, center_point)
-
-    visualize_voroni(image, facets, image_points)
-    grid_points_in_image = scale_grid(image, grid_points, center_facet, center_point, grid_spacing)
+    
+    grid_points_in_image = scale_grid(image, grid_points, center_facet, center_point, grid_spacing, plot)
 
     matches = []
     matched_facets = set()
@@ -59,17 +57,20 @@ def match_calibration_grid(image, image_points, grid_points, grid_spacing):
     #             matched_facets.add(i)
     #             break  # Each calibration point matched to at most one facet
 
-    print(matched_facets)
-    visualize_voroni(raw_image, facets, image_points)
-    print(f"Matched {len(matches)} calibration points to facets.")
+    if plot is True:
+        visualize_center(image, facets, center_facet, center_point)
+        visualize_voroni(image, facets, image_points)
+
     visualize_matched_facets(matches)
+
+    print(f"Matched {len(matches)} calibration points to facets.")    
     return matches
 
 def point_in_polygon(point, polygon):
     # point: (x, y), polygon: Nx2 array
     return cv2.pointPolygonTest(np.array(polygon, np.int32), tuple(point), False) >= 0
 
-def scale_grid(image, grid_points, center_facet, center_point, grid_spacing):
+def scale_grid(image, grid_points, center_facet, center_point, grid_spacing, plot):
     grid_points_in_image = np.copy(grid_points)[:, :2]
     grid_points_in_image[:, 1] *= -1 # flip bc of image coordinate systems
 
@@ -81,7 +82,8 @@ def scale_grid(image, grid_points, center_facet, center_point, grid_spacing):
     grid_points_in_image[:, 1] *= facetH / grid_spacing
     grid_points_in_image[:, 1] += center_point[1]
 
-    visualize_grid_points(image, grid_points_in_image)
+    if plot is True:
+        visualize_grid_points(image, grid_points_in_image)
 
     return grid_points_in_image
 
