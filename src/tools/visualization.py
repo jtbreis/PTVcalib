@@ -225,3 +225,26 @@ def visualize_matched_facets(matches):
     plt.title("Matched Grid Points and Facet Centers")
     plt.axis("equal")
     plt.show()
+
+def plot_fft_spectrum(img, magnitude_spectrum):
+    # Plot original + FFT
+    plt.figure(figsize=(10,5))
+
+    plt.subplot(121)
+    plt.imshow(img, cmap='gray')
+    plt.title("Original Image")
+
+    plt.subplot(122)
+    plt.imshow(magnitude_spectrum, cmap='gray')
+    plt.title("FFT Magnitude Spectrum")
+
+    plt.show()
+
+def plot_enhanced_comparison(img, filtered_img):
+    plt.figure(figsize=(12, 6))
+    plt.subplot(121), plt.imshow(img, cmap='gray')
+    plt.title("Original")
+
+    plt.subplot(122), plt.imshow(filtered_img, cmap='gray')
+    plt.title("Pattern Enhanced")
+    plt.show()

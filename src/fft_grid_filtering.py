@@ -1,13 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from tools.visualization import *
+
 def filter(img):
     # Compute 2D Fourier Transform
     f = np.fft.fft2(img)
     fshift = np.fft.fftshift(f)  # Shift zero frequency to center
     magnitude_spectrum = np.log(np.abs(fshift) + 1)
 
-    plot_spectrum(img, magnitude_spectrum)
+    plot_fft_spectrum(img, magnitude_spectrum)
     mask = create_mask(img, radius=30)
     fshift_filtered = fshift * mask
 
@@ -16,7 +18,7 @@ def filter(img):
     img_filtered = np.fft.ifft2(f_ishift)
     img_filtered = np.abs(img_filtered)
 
-    plot_comparison(img, img_filtered)
+    plot_enhanced_comparison(img, img_filtered)
     return img_filtered
 
 
@@ -32,26 +34,3 @@ def create_mask(img, radius):
     mask[crow-r:crow+r, ccol-r:ccol+r] = 0
 
     return mask
-
-def plot_spectrum(img, magnitude_spectrum):
-    # Plot original + FFT
-    plt.figure(figsize=(10,5))
-
-    plt.subplot(121)
-    plt.imshow(img, cmap='gray')
-    plt.title("Original Image")
-
-    plt.subplot(122)
-    plt.imshow(magnitude_spectrum, cmap='gray')
-    plt.title("FFT Magnitude Spectrum")
-
-    plt.show()
-
-def plot_comparison(img, filtered_img):
-    plt.figure(figsize=(12, 6))
-    plt.subplot(121), plt.imshow(img, cmap='gray')
-    plt.title("Original")
-
-    plt.subplot(122), plt.imshow(filtered_img, cmap='gray')
-    plt.title("Pattern Enhanced")
-    plt.show()

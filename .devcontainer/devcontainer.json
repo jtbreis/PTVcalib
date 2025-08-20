@@ -2,7 +2,7 @@
   "name": "Python Dev Container",
   "image": "mcr.microsoft.com/devcontainers/python:3.10",
   "features": {},
-  "postCreateCommand": "pip install -r requirements.txt",
+  "postCreateCommand": "pip install -r requirements.txt && nbstripout --install",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -14,6 +14,7 @@
     }
   },
   "mounts": [
-    "source=/mnt/ssd/julian/particle-tracking,target=/workspaces/PTVcalib/data,type=bind,consistency=cached"
+    "source=/mnt/ssd/julian/particle-tracking,target=/workspaces/PTVcalib/data,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
   ]
 }
