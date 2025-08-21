@@ -172,11 +172,14 @@ def display_image_with_histogram(image):
     plt.tight_layout()
     plt.show()
 
-def visualize_voroni(image, facets, points):
-    for facet in facets:
+def visualize_voroni(image, facets, centers, points):
+    for idx, facet in enumerate(facets):
         pts = np.array(facet, np.int32)
         cv2.fillConvexPoly(image, pts, (np.random.randint(256), np.random.randint(256), np.random.randint(256)))
         cv2.polylines(image, [pts], True, (0, 0, 0), 1)
+        # Annotate number of vertices for each facet
+        num_vertices = len(facet)
+        plt.text(centers[idx, 0], centers[idx, 1], str(num_vertices), color='black', fontsize=10, ha='center', va='center', bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
 
     # Draw points
     for p in points:
@@ -192,7 +195,10 @@ def visualize_center(image, facets, center, center_point):
     img_highlight = image.copy()
     for facet in facets:
         pts = np.array(facet, np.int32)
-        cv2.fillConvexPoly(img_highlight, pts, (200, 200, 200))
+        overlay = img_highlight.copy()
+        cv2.fillConvexPoly(overlay, pts, (200, 200, 200))
+        alpha = 0.3  # transparency factor
+        cv2.addWeighted(overlay, alpha, img_highlight, 1 - alpha, 0, img_highlight)
 
     # Highlight the center facet in red
     pts_center = np.array(center, np.int32)
@@ -208,9 +214,7 @@ def visualize_center(image, facets, center, center_point):
     plt.show()
 
 def visualize_grid_points(image, grid_points):
-    # plt.scatter(center_facet_centroid[0], center_facet_centroid[1], color='red', s=120, marker='x', label='Center Facet Centroid')
     plt.scatter(grid_points[:, 0], grid_points[:, 1])
-    plt.legend()
     plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     plt.axis("off")
     plt.show()
@@ -247,4 +251,19 @@ def plot_enhanced_comparison(img, filtered_img):
 
     plt.subplot(122), plt.imshow(filtered_img, cmap='gray')
     plt.title("Pattern Enhanced")
+    plt.show()
+
+def display_matched_points(img, matches):
+    plt.figure(figsize=(20, 20))
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    for match in matches:
+        real_world_pt, img_pt = match  # img_pt: (x, y) in image, real_world_pt: (X, Y) in real world
+        x, y = int(img_pt[0]), int(img_pt[1])
+        plt.scatter(x, y, s=120, edgecolors='yellow', facecolors='none', linewidths=2)
+        plt.text(x + 5, y - 15, f'{real_world_pt[0]:.2f}', color='white', fontsize=10,
+             bbox=dict(facecolor='black', alpha=0.5, pad=1))
+        plt.text(x + 5, y + 15, f'{real_world_pt[1]:.2f}', color='white', fontsize=10,
+             bbox=dict(facecolor='black', alpha=0.5, pad=1))
+    plt.title("Matched Points with Real World Coordinates")
+    plt.axis("off")
     plt.show()

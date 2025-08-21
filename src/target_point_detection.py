@@ -8,7 +8,18 @@ def detect_target_points(image, diameterDot=10):
     img = create_shifted_image(image, radius=radiusDot)
 
     points = detect_circles_locations(img, radiusDot)
+    points = remove_edge_points(image, points)
     return points
+
+def remove_edge_points(image, points):
+    # necessary to remove points that are too close to the edge / lie on the edge for Voroni tessalation
+    height, width = image.shape
+    filtered_points = [
+        (x, y)
+        for (x, y) in points
+        if 5 <= x < width - 5 and 5 <= y < height - 5
+    ]
+    return filtered_points
 
 def create_shifted_image(image, nimages=50, radius=5):
     # Create a dataset of 50 images by shifting img_data in a circle around the center

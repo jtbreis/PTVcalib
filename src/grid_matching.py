@@ -5,7 +5,8 @@ import pandas as pd
 
 from src.tools.visualization import *
 
-def match_calibration_grid(image, image_points, grid_points, grid_spacing, plot=False):
+# TODO make this a class so that I don't have to pass as many parameters
+def match_calibration_grid(image, image_points, grid_points, grid_spacing, diameterDot, center_find='Simple', plot=False):
     """
     image: input image make sure it is grayscale
     image_points: numpy array of detected points
@@ -24,10 +25,16 @@ def match_calibration_grid(image, image_points, grid_points, grid_spacing, plot=
 
     # TODO: filter for correct and wrong facets
     # square_facets = tuple(f for f in facets if is_almost_square(f))
+    facets = [merge_close_vertices(np.array(f), int(diameterDot/2)) for f in facets]
 
     # Step2: Find center of all facets
-    center_facet, center_point = find_center_facet(facets, centers)
-    
+    if center_find == 'Simple':
+        center_facet, center_point = find_center_facet(facets, centers)
+    elif center_find == 'TSI-backlight':
+        center_facet, center_point = detect_center(facets, centers)
+    else:
+        raise ValueError(f"Unknown center_find method: {center_find}")
+
     grid_points_in_image = scale_grid(image, grid_points, center_facet, center_point, grid_spacing, plot)
 
     matches = []
@@ -58,19 +65,33 @@ def match_calibration_grid(image, image_points, grid_points, grid_spacing, plot=
     #             break  # Each calibration point matched to at most one facet
 
     if plot is True:
-        visualize_center(image, facets, center_facet, center_point)
-        visualize_voroni(image, facets, image_points)
+        visualize_center(raw_image, facets, center_facet, center_point)
+        visualize_grid_points(raw_image, grid_points_in_image)
+        visualize_voroni(image, facets, centers, image_points)
+        visualize_matched_facets(matches)
 
-    visualize_matched_facets(matches)
+    display_matched_points(raw_image, matches)
 
     print(f"Matched {len(matches)} calibration points to facets.")    
     return matches
+
+def merge_close_vertices(facet, threshold):
+    merged = []
+    for v in facet:
+        if not merged:
+            merged.append(v)
+        else:
+            dists = [np.linalg.norm(np.array(v) - np.array(m)) for m in merged]
+            if all(dist > threshold for dist in dists):
+                merged.append(v)
+    return np.array(merged)
 
 def point_in_polygon(point, polygon):
     # point: (x, y), polygon: Nx2 array
     return cv2.pointPolygonTest(np.array(polygon, np.int32), tuple(point), False) >= 0
 
 def scale_grid(image, grid_points, center_facet, center_point, grid_spacing, plot):
+    # TODO: account for rotation and different spacing inside the grid
     grid_points_in_image = np.copy(grid_points)[:, :2]
     grid_points_in_image[:, 1] *= -1 # flip bc of image coordinate systems
 
@@ -81,9 +102,6 @@ def scale_grid(image, grid_points, center_facet, center_point, grid_spacing, plo
     # Scale y-Axis
     grid_points_in_image[:, 1] *= facetH / grid_spacing
     grid_points_in_image[:, 1] += center_point[1]
-
-    if plot is True:
-        visualize_grid_points(image, grid_points_in_image)
 
     return grid_points_in_image
 
@@ -115,3 +133,17 @@ def find_center_facet(facets, centers):
     dists = np.linalg.norm(centers - mean_center, axis=1)
     idx = np.argmin(dists)
     return facets[idx], centers[idx]
+
+def detect_center(facets, centers):
+    # TODO: this function is super specific to this calibration target, find a more general method.
+    for i, facet in enumerate(facets):
+        if len(facet) != 4:
+            continue
+        # Find neighbors: facets whose centers are closest to this facet's center
+        center = centers[i]
+        dists = np.linalg.norm(np.array(centers) - center, axis=1)
+        # Exclude self
+        neighbor_indices = np.argsort(dists)[1:5]  # 4 closest neighbors
+        neighbor_vertex_counts = [len(facets[j]) for j in neighbor_indices]
+        if neighbor_vertex_counts.count(6) == 2 and neighbor_vertex_counts.count(5) == 2:
+            return facet, center
