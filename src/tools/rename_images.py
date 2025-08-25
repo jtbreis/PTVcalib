@@ -11,7 +11,7 @@ def renumber_images(folder):
     for idx, filename in enumerate(files):
         ext = os.path.splitext(filename)[1]
         prefix = filename.split('_')[0] + '_'
-        new_name = prefix + f"{idx}{ext}"
+        new_name = prefix + f"{idx:04d}{ext}"
         src = os.path.join(folder, filename)
         dst = os.path.join(folder, new_name)
         os.rename(src, dst)

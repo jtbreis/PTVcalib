@@ -11,6 +11,7 @@ def match_calibration_grid(image, image_points, grid_points, grid_spacing, diame
     image: input image make sure it is grayscale
     image_points: numpy array of detected points
     grid_points: numpy array with grid points
+    matches numpy array (Nx5) [X, Y, Z, x, y]
     """
     h, w = image.shape
     raw_image = image.copy()
@@ -23,9 +24,11 @@ def match_calibration_grid(image, image_points, grid_points, grid_spacing, diame
     # Get Voronoi facets
     facets, centers = subdiv.getVoronoiFacetList([])
 
+    centers = np.array(centers)
+
     # TODO: filter for correct and wrong facets
     # square_facets = tuple(f for f in facets if is_almost_square(f))
-    facets = [merge_close_vertices(np.array(f), int(diameterDot/2)) for f in facets]
+    facets = [merge_close_vertices(np.array(f), diameterDot) for f in facets]
 
     # Step2: Find center of all facets
     if center_find == 'Simple':
@@ -51,7 +54,7 @@ def match_calibration_grid(image, image_points, grid_points, grid_spacing, diame
     for i, grid_indices in facet_to_grid_indices.items():
         if len(grid_indices) == 1:
             idx = grid_indices[0]
-            matches.append((grid_points[idx], centers[i]))
+            matches.append(np.hstack([grid_points[idx], centers[i]]))
             matched_facets.add(i)
 
     # for idx, cp in enumerate(grid_points_in_image):
@@ -68,11 +71,10 @@ def match_calibration_grid(image, image_points, grid_points, grid_spacing, diame
         visualize_center(raw_image, facets, center_facet, center_point)
         visualize_grid_points(raw_image, grid_points_in_image)
         visualize_voroni(image, facets, centers, image_points)
-        visualize_matched_facets(matches)
+        # visualize_matched_facets(matches) - TODO: might want to fix the visualization for this
+        display_matched_points(raw_image, matches)
 
-    display_matched_points(raw_image, matches)
-
-    print(f"Matched {len(matches)} calibration points to facets.")    
+    print(f"Matched {len(matches)} calibration points to facets.")
     return matches
 
 def merge_close_vertices(facet, threshold):

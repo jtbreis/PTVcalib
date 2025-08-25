@@ -2,12 +2,12 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-def detect_target_points(image, diameterDot=10):
+def detect_target_points(image, diameterDot=10, plot=False):
     # Step 1: create a shifted image with a known radius
     radiusDot = int(diameterDot/2)
     img = create_shifted_image(image, radius=radiusDot)
 
-    points = detect_circles_locations(img, radiusDot)
+    points = detect_circles_locations(img, radiusDot, plot)
     points = remove_edge_points(image, points)
     return points
 
@@ -35,7 +35,7 @@ def create_shifted_image(image, nimages=50, radius=5):
 
     return shifted_image
 
-def detect_circles_locations(image, radiusMin):
+def detect_circles_locations(image, radiusMin, plot=False):
     # Detect circles
     img = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     circles = cv2.HoughCircles(
@@ -49,17 +49,18 @@ def detect_circles_locations(image, radiusMin):
         maxRadius=int(radiusMin*1.5)     # Largest circle radius
     )
 
-    # Draw detected circles
-    output = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    if circles is not None:
-        circles = np.uint16(np.around(circles))
-        for (x, y, r) in circles[0, :]:
-            # cv2.circle(output, (x, y), r, (255, 0, 0), 2)
-            cv2.circle(output, (x, y), 10, (0, 0, 255), 3)
+    if plot is True:
+        # Draw detected circles
+        output = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        if circles is not None:
+            circles = np.uint16(np.around(circles))
+            for (x, y, r) in circles[0, :]:
+                # cv2.circle(output, (x, y), r, (255, 0, 0), 2)
+                cv2.circle(output, (x, y), 10, (0, 0, 255), 3)
 
-    plt.imshow(output)
-    plt.axis("off")
-    plt.show()
+        plt.imshow(output)
+        plt.axis("off")
+        plt.show()
 
     if circles is not None:
         centers = [(int(x), int(y)) for x, y, r in circles[0, :]]
