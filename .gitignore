@@ -2,3 +2,10 @@ data/
 output/
 __pycache__/
 .vscode/
+build/
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/

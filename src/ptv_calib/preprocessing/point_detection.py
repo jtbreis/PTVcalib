@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def detect_target_points(image, diameterDot=10, plot=False):
     # Step 1: create a shifted image with a known radius
     radiusDot = int(diameterDot/2)
@@ -10,6 +11,7 @@ def detect_target_points(image, diameterDot=10, plot=False):
     points = detect_circles_locations(img, radiusDot, plot)
     points = remove_edge_points(image, points)
     return points
+
 
 def remove_edge_points(image, points):
     # necessary to remove points that are too close to the edge / lie on the edge for Voroni tessalation
@@ -21,6 +23,7 @@ def remove_edge_points(image, points):
     ]
     return filtered_points
 
+
 def create_shifted_image(image, nimages=50, radius=5):
     # Create a dataset of 50 images by shifting img_data in a circle around the center
     # returns array X for PCA
@@ -31,9 +34,11 @@ def create_shifted_image(image, nimages=50, radius=5):
         angle = 2 * np.pi * i / nimages
         shift_x = int(radius * np.cos(angle))
         shift_y = int(radius * np.sin(angle))
-        shifted_image += np.roll(np.roll(image, shift_y, axis=0), shift_x, axis=1)
+        shifted_image += np.roll(np.roll(image, shift_y,
+                                 axis=0), shift_x, axis=1)
 
     return shifted_image
+
 
 def detect_circles_locations(image, radiusMin, plot=False):
     # Detect circles

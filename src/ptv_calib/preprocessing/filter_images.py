@@ -1,9 +1,10 @@
+import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 
-from src.tools.visualization import *
+from ..visualization.image_processing import plot_fft_spectrum, plot_enhanced_comparison
 
-def filter(img, diameterDot, contrast='equalizeHist', plot=False):
+
+def fft_filter(img, diameterDot, contrast='equalizeHist', plotting='None'):
     img = cv2.fastNlMeansDenoising(img, None, int(diameterDot/2))
 
     if contrast == 'equalizeHist':
@@ -22,17 +23,17 @@ def filter(img, diameterDot, contrast='equalizeHist', plot=False):
     img_filtered = np.fft.ifft2(f_ishift)
     img_filtered = np.abs(img_filtered)
 
-    if plot is True:
+    if plotting is 'Debug':
         plot_fft_spectrum(img, magnitude_spectrum)
         plot_enhanced_comparison(img, img_filtered)
-        
+
     return img_filtered
 
 
 def create_mask(img, radius=None):
     # Create a mask to filter frequencies
     rows, cols = img.shape
-    crow, ccol = rows//2 , cols//2  # center
+    crow, ccol = rows//2, cols//2  # center
 
     # Example: high-pass filter (removes smooth background, keeps sharp patterns)
     mask = np.ones((rows, cols), np.uint8)

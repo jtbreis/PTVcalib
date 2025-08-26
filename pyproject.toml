@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "PTV_calib"
+version = "0.1.0"
+description = "Calibration package for PTV applications"
+authors = [{name="Julian Reis", email="jreis25@uw.edu"}]
+dependencies = ["numpy", "opencv-python-headless", "matplotlib", "scipy", "scikit-learn", "pydmd"]
