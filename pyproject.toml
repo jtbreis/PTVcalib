@@ -7,4 +7,4 @@ name = "PTV_calib"
 version = "0.1.0"
 description = "Calibration package for PTV applications"
 authors = [{name="Julian Reis", email="jreis25@uw.edu"}]
-dependencies = ["numpy", "opencv-python-headless", "matplotlib", "scipy", "scikit-learn", "pydmd"]
+dependencies = ["numpy", "opencv-python-headless", "matplotlib", "scipy", "scikit-learn", "scikit-image", "pydmd"]
