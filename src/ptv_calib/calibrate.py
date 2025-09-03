@@ -5,7 +5,12 @@ from .preprocessing.filter_images import fft_filter
 from .preprocessing.point_detection import detect_target_points
 from .grid_matching.match_target_points import perform_matching
 from .utils.create_calibration_target import create_z_planes
+from .utils.utils import group_matches_by_planes
 from .calibration_method import CalibrationMethod
+
+from .calibration_tests.test_camera_calibration import test_camera
+
+from .visualization.plot_error import plot_2d_error, plot_2d_mean_error
 
 
 class Calibration:
@@ -35,6 +40,7 @@ class Calibration:
 
         self.image_points = np.empty((self.ncameras, n_planes), dtype=object)
         self.matched_points = np.empty((self.ncameras, n_planes), dtype=object)
+        self.error2d = np.empty(self.ncameras, dtype=object)
         self.calibration = np.array([CalibrationMethod(
             self.calibration_method, **kwargs) for cam_idx in range(self.ncameras)], dtype=object)
 
@@ -86,3 +92,18 @@ class Calibration:
         self.calibration = np.empty(self.ncameras, dtype=object)
         for cam_idx in range(self.ncameras):
             self.calibration[cam_idx]
+
+    def check_calibrated_layers(self):
+        for cam_idx, _ in enumerate(self.cameras):
+            cam_matches = np.vstack(self.matched_points[cam_idx, :])
+            XYZ = cam_matches[:, :3]
+            xy = cam_matches[:, 3:]
+
+            _, XYZ_grouped, xy_grouped = group_matches_by_planes(
+                XYZ=XYZ, xy=xy)
+
+            self.error2d[cam_idx] = test_camera(self.calibration[cam_idx], n_layers=self.n_planes,
+                                                XYZ_grouped=XYZ_grouped, xy_grouped=xy_grouped)
+
+        plot_2d_error(self.error2d)
+        plot_2d_mean_error(self.error2d)

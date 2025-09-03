@@ -19,10 +19,10 @@ class CalibrationMethod:
         return self._impl.fit(XYZ, xy)
 
     def transform_to_pixel(self, XYZ):
-        return self._impl.transform(XYZ)
+        return self._impl.transform_to_pixel(XYZ)
 
     def transform_to_real_world(self, xy):
-        return self._impl.inverse_transform(xy)
+        return self._impl.transform_to_real_world(xy)
 
     def __getattr__(self, name):
         # Only called if attribute not found on Calibration itself

@@ -2,6 +2,7 @@ from skimage import transform
 import numpy as np
 
 from .base import _CalibrationMethod
+from ..utils.utils import group_matches_by_planes
 
 
 class Method4DPTV(_CalibrationMethod):
@@ -23,14 +24,16 @@ class Method4DPTV(_CalibrationMethod):
 
     def transform_to_pixel(self, XYZ):
         Z = XYZ[:, 2]
+        xy = np.zeros_like(XYZ[:, :2])
         calib_planes = [calib['posPlane'] for calib in self.calibration]
-        if not np.any(np.isclose(Z, calib_planes)):
+        if not np.any(np.isclose(Z[0], calib_planes)):
             raise ValueError(
                 "Z value is not one of the calibrated plane positions.")
         else:
             plane_idx = np.where(np.isclose(Z[0], calib_planes))[0][0]
-            calib = self.calibration[plane_idx]
-            xy = calib['T3rw2px'].transform(XYZ[:, :2])
+
+        calib = self.calibration[plane_idx]
+        xy = calib['T3rw2px']((XYZ[:, :2]))
 
         return xy
 
@@ -45,19 +48,3 @@ class Method4DPTV(_CalibrationMethod):
             'polynomial', XY, xy, order=self.polynomial_order)
         calibration = {'posPlane': Z, 'T3rw2px': T3rw2px, 'T3px2rw': T3px2rw}
         return calibration
-
-
-def group_matches_by_planes(XYZ, xy):
-    Z_values = [plane[2] for plane in XYZ]
-    unique_Z = np.unique(Z_values)
-    n_planes = len(unique_Z)
-    # Group XYZ and xy by unique Z values
-    XYZ_grouped = []
-    xy_grouped = []
-    for Z in unique_Z:
-        indices = [i for i, plane in enumerate(
-            XYZ) if np.isclose(plane[2], Z)]
-        XYZ_grouped.append(np.vstack([XYZ[i] for i in indices]))
-        xy_grouped.append(np.vstack([xy[i] for i in indices]))
-
-    return n_planes, XYZ_grouped, xy_grouped

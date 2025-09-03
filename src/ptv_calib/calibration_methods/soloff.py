@@ -30,7 +30,7 @@ class Soloff(_CalibrationMethod):
     def transform_to_pixel(self, XYZ):
         x = F(XYZ, self.sx)
         y = F(XYZ, self.sy)
-        return np.array(x, y)
+        return np.array([x, y]).transpose()
 
     def transform_to_real_world(self, xy):
         # TODO: find a way to implement this
