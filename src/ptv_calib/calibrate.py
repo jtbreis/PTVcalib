@@ -36,8 +36,8 @@ class Calibration:
 
         self.image_points = np.empty((self.ncameras, n_planes), dtype=object)
         self.matched_points = np.empty((self.ncameras, n_planes), dtype=object)
-        self.calibration = np.array([CalibrationMethod(self.calibration_method, **kwargs) for cam_idx in range(self.ncameras)], dtype=object)
-
+        self.calibration = np.array([CalibrationMethod(
+            self.calibration_method, **kwargs) for cam_idx in range(self.ncameras)], dtype=object)
 
     def preprocess_images(self, enhance_contrast: str = 'equalizeHist', filter_method: str = 'FFT', img_output_return: bool = False):
         for cam_idx, cam in enumerate(self.cameras):
@@ -64,7 +64,7 @@ class Calibration:
 
     def perform_calibration(self):
         for cam_idx, _ in enumerate(self.cameras):
-            cam_matches = np.vstack(self.matched_points[cam_idx,:])
+            cam_matches = np.vstack(self.matched_points[cam_idx, :])
             XYZ = cam_matches[:, :2]
             xy = cam_matches[:, 2:]
             self.calibration[cam_idx].fit(XYZ, xy)
@@ -87,6 +87,3 @@ class Calibration:
         self.calibration = np.empty(self.ncameras, dtype=object)
         for cam_idx in range(self.ncameras):
             self.calibration[cam_idx]
-
-
-

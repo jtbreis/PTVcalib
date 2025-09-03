@@ -43,11 +43,13 @@ def perform_soloff(matches):
 
     return sx, sy
 
+
 def perform_tsai(matches, camera_parameters):
     XYZ, xy = get_XYZ_xy(matches)
     tsai = CameraTsai(camera_parameters)
 
     return
+
 
 def perform_extended_soloff(matches):
     XYZ, xy = get_XYZ_xy(matches)

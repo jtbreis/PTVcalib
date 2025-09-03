@@ -5,6 +5,8 @@ from .tsai import Tsai
 from .polynomial_4d_ptv import Method4DPTV
 
 # private interface
+
+
 class _CalibrationMethod(ABC):
     @abstractmethod
     def fit(self, XYZ, xy): ...
