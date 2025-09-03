@@ -5,8 +5,7 @@ from .preprocessing.filter_images import fft_filter
 from .preprocessing.point_detection import detect_target_points
 from .grid_matching.match_target_points import perform_matching
 from .utils.create_calibration_target import create_z_planes
-from .calibration_methods.apply_calibration_method import calibrate_camera
-from .calibration_methods.calibration_method import CalibrationMethod
+from .calibration_method import CalibrationMethod
 
 
 class Calibration:
@@ -65,8 +64,8 @@ class Calibration:
     def perform_calibration(self):
         for cam_idx, _ in enumerate(self.cameras):
             cam_matches = np.vstack(self.matched_points[cam_idx, :])
-            XYZ = cam_matches[:, :2]
-            xy = cam_matches[:, 2:]
+            XYZ = cam_matches[:, :3]
+            xy = cam_matches[:, 3:]
             self.calibration[cam_idx].fit(XYZ, xy)
 
         return self.calibration

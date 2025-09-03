@@ -1,19 +1,6 @@
-from abc import ABC, abstractmethod
-
-from .soloff import Soloff
-from .tsai import Tsai
-from .polynomial_4d_ptv import Method4DPTV
-
-# private interface
-
-
-class _CalibrationMethod(ABC):
-    @abstractmethod
-    def fit(self, XYZ, xy): ...
-    @abstractmethod
-    def transform_to_pixel(self, XYZ): ...
-    @abstractmethod
-    def transform_to_real_world(self, xy): ...
+from .calibration_methods.soloff import Soloff
+from .calibration_methods.tsai import Tsai
+from .calibration_methods.polynomial_4d_ptv import Method4DPTV
 
 
 class CalibrationMethod:
@@ -36,3 +23,7 @@ class CalibrationMethod:
 
     def transform_to_real_world(self, xy):
         return self._impl.inverse_transform(xy)
+
+    def __getattr__(self, name):
+        # Only called if attribute not found on Calibration itself
+        return getattr(self._impl, name)

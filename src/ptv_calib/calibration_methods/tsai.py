@@ -1,6 +1,6 @@
 import numpy as np
 
-from .calibration_method import _CalibrationMethod
+from .base import _CalibrationMethod
 
 
 class Tsai(_CalibrationMethod):

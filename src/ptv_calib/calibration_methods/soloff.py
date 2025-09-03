@@ -10,7 +10,7 @@ import numpy as np
 
 from scipy.optimize import least_squares
 
-from .calibration_method import _CalibrationMethod
+from .base import _CalibrationMethod
 
 # TODO: make this a class that stores the Soloff calibration
 
