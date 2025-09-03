@@ -1,5 +1,5 @@
 '''
-
+    This is a modified version of the soloff implementation from Robin Barta
     This script contains the soloff polynomial and the optimization function during extending and triangulation since it is based on the soloff polynom.
     From: https://github.com/RobinBarta/proPTV/blob/v1.1/code/preProcessing/7_calibration/functions/soloff.py
 
@@ -8,6 +8,32 @@
 
 import numpy as np
 
+from scipy.optimize import least_squares
+
+from .calibration_method import _CalibrationMethod
+
+#TODO: make this a class that stores the Soloff calibration
+class Soloff(_CalibrationMethod):
+    def __init__(self):
+        self.N = 20
+        self.sx = np.zeros(self.N, dtype=float)
+        self.sy = np.zeros(self.N, dtype=float)
+
+    def fit(self, XYZ, xy):
+        self.sx = least_squares(lambda a: F(XYZ, a) -
+                       xy[:, 0], np.zeros(self.N), method='trf').x
+        self.sy = least_squares(lambda a: F(XYZ, a) -
+                       xy[:, 1], np.zeros(self.N), method='trf').x
+    
+    def transform_to_pixel(self, XYZ):
+        x = F(XYZ, self.sx)
+        y = F(XYZ, self.sy)
+        return np.array(x, y)
+    
+    def transform_to_real_world(self, xy):
+        #TODO: find a way to implement this
+        return
+    
 
 def F(XYZ, a):
     '''

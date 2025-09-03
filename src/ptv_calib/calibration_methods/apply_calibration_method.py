@@ -1,10 +1,11 @@
 import numpy as np
 
 # TODO change implementation of soloff model
-from .soloff import F
 from scipy.optimize import least_squares
 
+from .soloff import F
 from .polynomial_4d_ptv import calibrate_4dptv_layer
+from .tsai import CameraTsai
 
 
 def calibrate_camera(matches, calibration_method: str):
@@ -13,6 +14,10 @@ def calibrate_camera(matches, calibration_method: str):
         cam_calibration = perform_soloff(matches)
     if calibration_method == '4d-ptv':
         cam_calibration = perform_4dptv_calibration(matches)
+    if calibration_method == "Tsai":
+        cam_calibration = perform_tsai(matches)
+    if calibration_method == 'Extended-Soloff':
+        cam_calibration = perform_extended_soloff(matches)
     else:
         raise ValueError(
             f"Unknown calibration method: {calibration_method}")
@@ -38,8 +43,19 @@ def perform_soloff(matches):
 
     return sx, sy
 
+def perform_tsai(matches, camera_parameters):
+    XYZ, xy = get_XYZ_xy(matches)
+    tsai = CameraTsai(camera_parameters)
 
-def perform_opencv_calibration(xy, XYZ):
+    return
+
+def perform_extended_soloff(matches):
+    XYZ, xy = get_XYZ_xy(matches)
+    return
+
+
+def perform_opencv_calibration(matches):
+    XYZ, xy = get_XYZ_xy(matches)
     return
 
 
@@ -53,3 +69,10 @@ def perform_4dptv_calibration(matches):
         Z = layer_points[0, 2]
         calibration[layer_idx] = calibrate_4dptv_layer(XY, xy, Z)
     return calibration
+
+
+def get_XYZ_xy(matches):
+    points = np.vstack(matches)
+    XYZ = points[:, :3]
+    xy = points[:, 3:]
+    return XYZ, xy
