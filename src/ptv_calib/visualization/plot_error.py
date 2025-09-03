@@ -11,8 +11,8 @@ def plot_2d_error(camera_2d_error):
     for layer_idx in range(num_layers):
         for cam_idx in range(num_cameras):
             ax = axes[layer_idx][cam_idx]
-            error = camera_2d_error[layer_idx][cam_idx]['error']
-            xy = camera_2d_error[layer_idx][cam_idx]['xy']
+            error = camera_2d_error[cam_idx][layer_idx]['error']
+            xy = camera_2d_error[cam_idx][layer_idx]['xy']
             u = error[:, 0]
             v = error[:, 1]
             std_dev = np.linalg.norm(error, axis=1)
@@ -39,7 +39,7 @@ def plot_2d_mean_error(camera_2d_error):
         ax = axes[cam_idx] if num_cameras > 1 else axes
         mean_errors = []
         for layer_idx in range(num_layers):
-            mean = camera_2d_error[layer_idx][cam_idx]['mean']
+            mean = camera_2d_error[cam_idx][layer_idx]['mean']
             mean_errors.append(mean)
         ax.plot(range(1, num_layers+1), mean_errors, marker='o')
         ax.set_title(f'Camera {cam_idx+1}')
