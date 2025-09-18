@@ -23,7 +23,7 @@ def fft_filter(img, diameterDot, contrast='equalizeHist', plotting='None'):
     img_filtered = np.fft.ifft2(f_ishift)
     img_filtered = np.abs(img_filtered)
 
-    if plotting is 'Debug':
+    if plotting == 'Debug':
         plot_fft_spectrum(img, magnitude_spectrum)
         plot_enhanced_comparison(img, img_filtered)
 

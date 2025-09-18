@@ -1,11 +1,14 @@
 import numpy as np
+import os
 
 from .io.reader import read_images, load_calibration_target
+from .io.output import write_h5_matches, write_h5_file
 from .preprocessing.filter_images import fft_filter
 from .preprocessing.point_detection import detect_target_points
 from .grid_matching.match_target_points import perform_matching
 from .utils.create_calibration_target import create_z_planes
 from .utils.utils import group_matches_by_planes
+from .utils.structure import create_folder_structure, Folders
 from .calibration_method import CalibrationMethod
 
 from .calibration_tests.test_camera_calibration import test_camera
@@ -21,12 +24,14 @@ class Calibration:
     """
 
     # TODO: calculate grid spacing from the calibration grid file
-    def __init__(self, cameras: list[int], folder_path: str, calibration_grid_path: str, grid_spacing: float, target_point_diameter: int, z_min: float, z_max: float, n_planes: int, calibration_method: str = 'Soloff', **kwargs):
+    def __init__(self, cameras: list[int], folder_path: str, output_path: str, calibration_grid_path: str, grid_spacing: float, target_point_diameter: int, z_min: float, z_max: float, n_planes: int, calibration_method: str = 'Soloff', **kwargs):
         self.plotting = 'None'
         self.cameras = cameras
         self.ncameras = len(cameras)
         self.calibration_method = calibration_method
         self.path = folder_path
+        self.output_path = output_path
+        create_folder_structure(self.output_path)
         self.image_files = np.empty((self.ncameras), dtype=object)
 
         self.calibration_grid = calibration_grid_path
@@ -47,7 +52,8 @@ class Calibration:
     def preprocess_images(self, enhance_contrast: str = 'equalizeHist', filter_method: str = 'FFT', img_output_return: bool = False):
         for cam_idx, cam in enumerate(self.cameras):
             camera_path = self.path + f'/Camera{cam}'
-            self.image_files[cam_idx], images = read_images(camera_path)
+            self.image_files[cam_idx], images = read_images(
+                camera_path, self.n_planes)
 
             for idx, img in enumerate(images):
                 images[idx] = fft_filter(img, self.target_point_diameter,
@@ -62,10 +68,12 @@ class Calibration:
         for cam_idx, _ in enumerate(self.cameras):
             for idx, img_path in enumerate(self.image_files[cam_idx]):
                 print(idx, img_path)
+                output_path = self.output_path + \
+                    f'{Folders.ANNOTATIONS.value}/Camera{cam_idx}_{self.z_planes[idx]}.jpg'
                 if self.n_planes != 0:
                     self.calibration_grid_points[:, 2] = self.z_planes[idx]
                 self.matched_points[cam_idx, idx] = perform_matching(
-                    img_path, self.image_points[cam_idx, idx], self.calibration_grid_points, self.grid_spacing, self.target_point_diameter, center_find_method, self.plotting)
+                    img_path, output_path, self.image_points[cam_idx, idx], self.calibration_grid_points, self.grid_spacing, self.target_point_diameter, center_find_method, self.plotting)
 
     def perform_calibration(self):
         for cam_idx, _ in enumerate(self.cameras):
@@ -107,3 +115,10 @@ class Calibration:
 
         plot_2d_error(self.error2d)
         plot_2d_mean_error(self.error2d)
+
+    def write_matches(self):
+        write_h5_matches(self.matched_points,
+                         f'{self.output_path + Folders.MATCHES.value}/matches.h5')
+
+    def write_calibration(self):
+        write_h5_file(self.calibration)

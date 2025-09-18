@@ -10,7 +10,7 @@ from ..visualization.debug_plots import visualize_center, visualize_grid_points,
 from ..visualization.plotting import display_matched_points
 
 
-def perform_matching(image_path: str, image_points, grid_points, grid_spacing, diameterDot, center_method='Simple', plot='None'):
+def perform_matching(image_path: str, output_path: str, image_points, grid_points, grid_spacing, diameterDot, center_method='Simple', plot='None'):
     """
     image: input image make sure it is grayscale
     image_points: numpy array of detected points
@@ -66,7 +66,7 @@ def perform_matching(image_path: str, image_points, grid_points, grid_spacing, d
         # visualize_matched_facets(matches) - TODO: might want to fix the visualization for this
 
     if plot == 'Normal':
-        display_matched_points(raw_image, matches)
+        display_matched_points(raw_image, matches, output_path=output_path)
 
     print(f"Matched {len(matches)} calibration points to facets.")
     return matches
