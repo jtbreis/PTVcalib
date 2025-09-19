@@ -48,3 +48,30 @@ class Method4DPTV(_CalibrationMethod):
             'polynomial', XY, xy, order=self.polynomial_order)
         calibration = {'posPlane': Z, 'T3rw2px': T3rw2px, 'T3px2rw': T3px2rw}
         return calibration
+
+    def from_dict(self, struct):
+        for layer_key, layer_data in struct.items():
+            # Rebuild forward transform (rw → px)
+            T3rw2px = transform.PolynomialTransform()
+            T3rw2px.params = np.array(layer_data["T3rw2px"], dtype=float)
+
+            # Rebuild inverse transform (px → rw)
+            T3px2rw = transform.PolynomialTransform()
+            T3px2rw.params = np.array(layer_data["T3px2rw"], dtype=float)
+
+            self.calibration.append({
+                "posPlane": layer_data["posPlane"],
+                "T3rw2px": T3rw2px,
+                "T3px2rw": T3px2rw,
+            })
+
+    def to_dict(self):
+        output = {}
+        for layer_idx, layer in enumerate(self.calibration):
+            output[f'layer{layer_idx}'] = {
+                'posPlane': layer['posPlane'],
+                'T3rw2px': layer['T3rw2px'].params,
+                'T3px2rw': layer['T3px2rw'].params
+            }
+
+        return output

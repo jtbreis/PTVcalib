@@ -24,6 +24,12 @@ class CalibrationMethod:
     def transform_to_real_world(self, xy):
         return self._impl.transform_to_real_world(xy)
 
+    def to_dict(self):
+        return self._impl.to_dict()
+
+    def from_dict(self, struct):
+        return self._impl.from_dict(struct)
+
     def __getattr__(self, name):
         # Only called if attribute not found on Calibration itself
         return getattr(self._impl, name)

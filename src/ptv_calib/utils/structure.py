@@ -4,9 +4,11 @@ import os
 
 class Folders(Enum):
     # Can be renamed in the future
+    GENERAL = "/Calibration"
     MATCHES = "/Calibration/Matches"
     ANNOTATIONS = "/Calibration/Matches/Annotations"
     TESTS = "/Calibration/Tests"
+    CALIBRATION = '/calib.h5'
 
 
 def create_folder_structure(output_path: str):

@@ -10,6 +10,17 @@ def write_h5_file(data, filename):
             f.create_dataset(key, data=value)
 
 
+def write_h5_calibration(calibration, filename):
+    with h5py.File(filename, 'w') as f:
+        for cam_idx, calibration in enumerate(calibration):
+            grp = f.create_group(f"Camera {cam_idx}")
+            calib = calibration.to_dict()
+            for layer, layer_calib in calib.items():
+                subgrp = grp.create_group(layer)
+                for key, value in layer_calib.items():
+                    subgrp.create_dataset(key, data=value)
+
+
 def write_h5_matches(matches, filename):
     with h5py.File(filename, 'w') as f:
         for cam_idx in range(matches.shape[0]):

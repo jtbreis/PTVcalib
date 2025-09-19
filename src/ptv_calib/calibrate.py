@@ -2,7 +2,7 @@ import numpy as np
 import os
 
 from .io.reader import read_images, load_calibration_target
-from .io.output import write_h5_matches, write_h5_file
+from .io.output import write_h5_matches, write_h5_calibration
 from .preprocessing.filter_images import fft_filter
 from .preprocessing.point_detection import detect_target_points
 from .grid_matching.match_target_points import perform_matching
@@ -121,4 +121,5 @@ class Calibration:
                          f'{self.output_path + Folders.MATCHES.value}/matches.h5')
 
     def write_calibration(self):
-        write_h5_file(self.calibration)
+        write_h5_calibration(
+            self.calibration, self.output_path + Folders.GENERAL.value + Folders.CALIBRATION.value)
