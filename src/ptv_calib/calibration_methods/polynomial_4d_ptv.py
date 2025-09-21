@@ -20,7 +20,7 @@ class Method4DPTV(_CalibrationMethod):
             XY_plane = XYZ_plane[:, :2]
             Z_plane = XYZ_plane[0, 2]
             self.calibration[plane_idx] = self.calibrate_layer(
-                XY_plane, xy_plane, Z_plane)
+                xy_plane, XY_plane, Z_plane)
 
     def transform_to_pixel(self, XYZ):
         Z = XYZ[:, 2]
@@ -46,9 +46,9 @@ class Method4DPTV(_CalibrationMethod):
 
     def calibrate_layer(self, xy, XY, Z):
         T3rw2px = transform.estimate_transform(
-            'polynomial', xy, XY, order=self.polynomial_order)
-        T3px2rw = transform.estimate_transform(
             'polynomial', XY, xy, order=self.polynomial_order)
+        T3px2rw = transform.estimate_transform(
+            'polynomial', xy, XY, order=self.polynomial_order)
         calibration = {'posPlane': Z, 'T3rw2px': T3rw2px, 'T3px2rw': T3px2rw}
         return calibration
 

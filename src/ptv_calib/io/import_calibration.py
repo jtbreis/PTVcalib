@@ -19,7 +19,6 @@ def import_calibration(folder):
                     "T3rw2px": subgrp["T3rw2px"][()],
                     "T3px2rw": subgrp["T3px2rw"][()],
                 }
-
             calib = CalibrationMethod('4d-ptv')
             calib.from_dict(data)
             calibration[cam_idx] = calib

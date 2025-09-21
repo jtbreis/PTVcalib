@@ -45,7 +45,8 @@ class Calibration:
 
         self.image_points = np.empty((self.ncameras, n_planes), dtype=object)
         self.matched_points = np.empty((self.ncameras, n_planes), dtype=object)
-        self.error2d = np.empty(self.ncameras, dtype=object)
+        self.error2dpx2rw = np.empty(self.ncameras, dtype=object)
+        self.error2drw2px = np.empty(self.ncameras, dtype=object)
         self.calibration = np.array([CalibrationMethod(
             self.calibration_method, **kwargs) for cam_idx in range(self.ncameras)], dtype=object)
 
@@ -110,15 +111,17 @@ class Calibration:
             _, XYZ_grouped, xy_grouped = group_matches_by_planes(
                 XYZ=XYZ, xy=xy)
 
-            self.error2d[cam_idx] = test_camera(self.calibration[cam_idx], n_layers=self.n_planes,
-                                                XYZ_grouped=XYZ_grouped, xy_grouped=xy_grouped)
+            self.error2drw2px[cam_idx], self.error2dpx2rw[cam_idx] = test_camera(self.calibration[cam_idx], n_layers=self.n_planes,
+                                                                                 XYZ_grouped=XYZ_grouped, xy_grouped=xy_grouped)
 
-        plot_2d_error(self.error2d)
-        plot_2d_mean_error(self.error2d)
+        plot_2d_error(self.error2drw2px)
+        plot_2d_mean_error(self.error2drw2px)
+        plot_2d_error(self.error2dpx2rw)
+        plot_2d_mean_error(self.error2dpx2rw)
 
     def write_matches(self):
         write_h5_matches(self.matched_points,
-                         self.output_path + Folders.MATCHES.value + Filenames.MATCHES)
+                         self.output_path + Folders.MATCHES.value + Filenames.MATCHES.value)
 
     def write_calibration(self):
         write_h5_calibration(
