@@ -8,7 +8,11 @@ class Folders(Enum):
     MATCHES = "/Calibration/Matches"
     ANNOTATIONS = "/Calibration/Matches/Annotations"
     TESTS = "/Calibration/Tests"
-    CALIBRATION = '/calib.h5'
+
+
+class Filenames(Enum):
+    CALIBRATION = "/calib.h5"
+    MATCHES = "/matches.h5"
 
 
 def create_folder_structure(output_path: str):

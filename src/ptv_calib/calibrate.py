@@ -8,7 +8,7 @@ from .preprocessing.point_detection import detect_target_points
 from .grid_matching.match_target_points import perform_matching
 from .utils.create_calibration_target import create_z_planes
 from .utils.utils import group_matches_by_planes
-from .utils.structure import create_folder_structure, Folders
+from .utils.structure import create_folder_structure, Folders, Filenames
 from .calibration_method import CalibrationMethod
 
 from .calibration_tests.test_camera_calibration import test_camera
@@ -118,8 +118,8 @@ class Calibration:
 
     def write_matches(self):
         write_h5_matches(self.matched_points,
-                         f'{self.output_path + Folders.MATCHES.value}/matches.h5')
+                         self.output_path + Folders.MATCHES.value + Filenames.MATCHES)
 
     def write_calibration(self):
         write_h5_calibration(
-            self.calibration, self.output_path + Folders.GENERAL.value + Folders.CALIBRATION.value)
+            self.calibration, self.output_path + Folders.GENERAL.value + Filenames.CALIBRATION.value)

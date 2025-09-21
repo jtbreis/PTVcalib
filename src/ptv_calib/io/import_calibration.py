@@ -2,11 +2,11 @@ import h5py
 import numpy as np
 
 from ..calibration_method import CalibrationMethod
-from ..utils.structure import Folders
+from ..utils.structure import Folders, Filenames
 
 
 def import_calibration(folder):
-    filename = folder + "/../.." + Folders.GENERAL.value + Folders.CALIBRATION.value
+    filename = folder + "/../.." + Folders.GENERAL.value + Filenames.CALIBRATION.value
     with h5py.File(filename, "r") as f:
         calibration = np.empty(len(f.keys()), dtype=object)
         for cam_idx, camera in enumerate(f.keys()):

@@ -38,8 +38,11 @@ class Method4DPTV(_CalibrationMethod):
         return xy
 
     def transform_to_real_world(self, points):
-        # TODO requires a 3D matching algorithm
-        return super().inverse_transform(points)
+        XYZ = np.zeros([points.shape[0], points.shape[1]+1, self.n_planes])
+        for layer_idx, layer_calib in enumerate(self.calibration):
+            XYZ[:, :2, layer_idx] = layer_calib['T3px2rw'](points)
+            XYZ[:, 2, layer_idx] = layer_calib['posPlane']
+        return XYZ
 
     def calibrate_layer(self, xy, XY, Z):
         T3rw2px = transform.estimate_transform(
@@ -50,7 +53,8 @@ class Method4DPTV(_CalibrationMethod):
         return calibration
 
     def from_dict(self, struct):
-        self.calibration = np.empty(len(struct.keys()), dtype=object)
+        self.n_planes = len(struct.keys())
+        self.calibration = np.empty(self.n_planes, dtype=object)
         for idx, [layer_key, layer_data] in enumerate(struct.items()):
             # Rebuild forward transform (rw → px)
             T3rw2px = transform.PolynomialTransform()
