@@ -50,7 +50,8 @@ class Method4DPTV(_CalibrationMethod):
         return calibration
 
     def from_dict(self, struct):
-        for layer_key, layer_data in struct.items():
+        self.calibration = np.empty(len(struct.keys()), dtype=object)
+        for idx, [layer_key, layer_data] in enumerate(struct.items()):
             # Rebuild forward transform (rw → px)
             T3rw2px = transform.PolynomialTransform()
             T3rw2px.params = np.array(layer_data["T3rw2px"], dtype=float)
@@ -59,11 +60,11 @@ class Method4DPTV(_CalibrationMethod):
             T3px2rw = transform.PolynomialTransform()
             T3px2rw.params = np.array(layer_data["T3px2rw"], dtype=float)
 
-            self.calibration.append({
+            self.calibration[idx] = {
                 "posPlane": layer_data["posPlane"],
                 "T3rw2px": T3rw2px,
                 "T3px2rw": T3px2rw,
-            })
+            }
 
     def to_dict(self):
         output = {}
