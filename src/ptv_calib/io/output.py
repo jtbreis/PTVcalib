@@ -30,10 +30,15 @@ def write_h5_matches(matches, filename):
                     f"Layer {layer_idx}", data=matches[cam_idx, layer_idx])
 
 
-def output_4dptv(calibration):
-
-    sio.savemat('calib.mat', {
-
-    })
-
-    return
+def write_h5_test_files(matches, folder):
+    for cam_idx in range(matches.shape[0]):
+        with h5py.File(folder+f'{cam_idx+1}.h5', 'w') as f:
+            for layer_idx in range(matches.shape[1]):
+                grp = f.create_group(f'frame{int(layer_idx):05d}')
+                data = np.vstack(matches[cam_idx, layer_idx])
+                grp.create_dataset(
+                    'x', data=data[:, -2])
+                grp.create_dataset(
+                    'y', data=data[:, -1])
+                grp.create_dataset(
+                    'XYZ', data=data[:, 0:2])

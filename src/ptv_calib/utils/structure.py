@@ -13,6 +13,7 @@ class Folders(Enum):
 class Filenames(Enum):
     CALIBRATION = "/calib.h5"
     MATCHES = "/matches.h5"
+    CAMERA = "/Camera"
 
 
 def create_folder_structure(output_path: str):
