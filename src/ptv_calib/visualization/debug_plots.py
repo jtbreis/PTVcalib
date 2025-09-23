@@ -54,3 +54,12 @@ def visualize_grid_points(image, grid_points):
     plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     plt.axis("off")
     plt.show()
+
+
+def visualize_detected_points(image, image_points):
+    points = np.vstack(image_points)
+    print(points.shape)
+    plt.scatter(points[:, 0], points[:, 1])
+    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.show()

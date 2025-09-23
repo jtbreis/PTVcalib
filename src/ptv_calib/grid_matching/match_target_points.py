@@ -6,7 +6,7 @@ from .grid_manipulation import scale_grid, merge_close_vertices
 from .grid_checks import is_almost_square, point_in_polygon
 from .find_target_center import find_center
 
-from ..visualization.debug_plots import visualize_center, visualize_grid_points, visualize_voroni
+from ..visualization.debug_plots import visualize_center, visualize_grid_points, visualize_voroni, visualize_detected_points
 from ..visualization.plotting import display_matched_points
 
 
@@ -59,6 +59,7 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
             matched_facets.add(i)
 
     if plot == 'Debug':
+        visualize_detected_points(raw_image, image_points)
         visualize_center(raw_image, facets, center_facet, center_point)
         visualize_grid_points(raw_image, grid_points_in_image)
         visualize_voroni(image, facets, centers, image_points)
