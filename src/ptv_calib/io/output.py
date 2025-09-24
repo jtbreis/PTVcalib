@@ -41,4 +41,4 @@ def write_h5_test_files(matches, folder):
                 grp.create_dataset(
                     'y', data=data[:, -1])
                 grp.create_dataset(
-                    'XYZ', data=data[:, 0:2])
+                    'XYZ', data=data[:, 0:3])
