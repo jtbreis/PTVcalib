@@ -39,7 +39,7 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
         center_method=center_method, facets=facets, centers=centers)
 
     grid_points_in_image = scale_grid(
-        image, grid_points, center_facet, center_point, grid_spacing, plot)
+        image=image, grid_points=grid_points, facets=facets, centers=centers, center_facet=center_facet, center_point=center_point, grid_spacing=grid_spacing, plot=plot)
 
     matches = []
     matched_facets = set()
