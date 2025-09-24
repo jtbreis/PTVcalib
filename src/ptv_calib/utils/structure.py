@@ -7,6 +7,7 @@ class Folders(Enum):
     GENERAL = "/Calibration"
     MATCHES = "/Calibration/Matches"
     ANNOTATIONS = "/Calibration/Matches/Annotations"
+    CENTERS = "/Centers"
     TESTS = "/Calibration/Tests"
 
 

@@ -125,7 +125,7 @@ class Calibration:
 
     def write_calibration_test_files(self):
         write_h5_test_files(self.matched_points,
-                            self.output_path + Folders.TESTS.value + Filenames.CAMERA.value)
+                            self.output_path + Folders.TESTS.value + Folders.CENTERS.values + Filenames.CAMERA.value)
 
     def write_calibration(self):
         write_h5_calibration(
