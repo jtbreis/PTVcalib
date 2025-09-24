@@ -5,6 +5,7 @@ import pandas as pd
 from .grid_manipulation import scale_grid, merge_close_vertices
 from .grid_checks import is_almost_square, point_in_polygon
 from .find_target_center import find_center
+from scipy.spatial import ConvexHull
 
 from ..visualization.debug_plots import visualize_center, visualize_grid_points, visualize_voroni, visualize_detected_points
 from ..visualization.plotting import display_matched_points
@@ -21,8 +22,32 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
     h, w = image.shape
     raw_image = image.copy()
 
+    # TODO: something like this could be used to capture more calibration points in the future
+    # # Compute the convex hull
+    # hull = ConvexHull(image_points)
+    # img_pts = np.vstack(image_points)
+    # # Extract the outer layer points (vertices of the hull)
+    # outer_points_indices = np.array(hull.vertices)
+    # outer_points = img_pts[outer_points_indices]
+
+    # # Move outer points 20 pixels further out from the center of the hull
+    # hull_center = np.mean(outer_points, axis=0)
+    # direction_vectors = outer_points - hull_center
+    # norms = np.linalg.norm(direction_vectors, axis=1, keepdims=True)
+    # norms[norms == 0] = 1  # Prevent division by zero
+    # unit_vectors = direction_vectors / norms
+    # moved_outer_points = outer_points + unit_vectors * 5
+    # # Ensure moved_outer_points stay within image bounds (1 pixel away from edge)
+    # moved_outer_points[:, 0] = np.clip(moved_outer_points[:, 0], 1, w - 2)
+    # moved_outer_points[:, 1] = np.clip(moved_outer_points[:, 1], 1, h - 2)
+
+    # # Optionally, you can append these moved points to image_points if needed
+    # # image_points = np.vstack([image_points, moved_outer_points])
+
     # Step1: Subdiv for Voronoi
     subdiv = cv2.Subdiv2D((0, 0, w, h))
+    # for p in moved_outer_points:
+    # subdiv.insert(p)
     for p in image_points:
         subdiv.insert(p)
 
