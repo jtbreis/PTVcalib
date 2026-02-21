@@ -1,4 +1,5 @@
 import cv2
+import freud
 import numpy as np
 import pandas as pd
 
@@ -44,17 +45,29 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
     # # Optionally, you can append these moved points to image_points if needed
     # # image_points = np.vstack([image_points, moved_outer_points])
 
-    # Step1: Subdiv for Voronoi
-    subdiv = cv2.Subdiv2D((0, 0, w, h))
-    # for p in moved_outer_points:
-    # subdiv.insert(p)
-    for p in image_points:
-        subdiv.insert(p)
+    # Step1: Voronoi tessellation via freud (box is centered at origin)
+    box = freud.box.Box(Lx=w+10, Ly=h+10, Lz=0)
+    # Convert to (N, 3) and center coordinates for freud
+    points_centered = np.hstack([
+        image_points - np.array([w / 2.0, h / 2.0]),
+        np.zeros((len(image_points), 1)),
+    ])
+    voro = freud.locality.Voronoi()
+    voro.compute((box, points_centered))
 
-    # Get Voronoi facets
-    facets, centers = subdiv.getVoronoiFacetList([])
+    # Polytopes: list of vertex arrays per cell; convert back to image coords and take xy
+    offset = np.array([w / 2.0, h / 2.0])
+    facets = []
+    for poly in voro.polytopes:
+        verts = np.asarray(poly)
+        if verts.size == 0:
+            facets.append(np.empty((0, 2)))
+            continue
+        xy = verts[:, :2] + offset
+        facets.append(xy)
 
-    centers = np.array(centers)
+    # Centers: one per cell, same order as input points (use original image coordinates)
+    centers = np.asarray(image_points, dtype=float)
 
     # TODO: filter for correct and wrong facets
     # square_facets = tuple(f for f in facets if is_almost_square(f))

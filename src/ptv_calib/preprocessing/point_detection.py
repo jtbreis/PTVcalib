@@ -9,7 +9,7 @@ def detect_target_points(image, diameterDot=10, plot=False):
     img = create_shifted_image(image, radius=radiusDot)
 
     points = detect_circles_locations(img, radiusDot, plot)
-    points = remove_edge_points(image, points)
+    # points = remove_edge_points(image, points)
     return points
 
 
