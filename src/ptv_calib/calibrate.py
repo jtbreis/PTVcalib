@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import os
 
@@ -14,6 +15,8 @@ from .calibration_method import CalibrationMethod
 from .calibration_tests.test_camera_calibration import test_camera
 
 from .visualization.plot_error import plot_2d_error, plot_2d_mean_error
+
+logger = logging.getLogger(__name__)
 
 
 class Calibration:
@@ -43,6 +46,11 @@ class Calibration:
         self.z_planes = create_z_planes(z_min, z_max, n_planes)
         self.n_planes = n_planes
 
+        logger.info(
+            "Calibration setup: %d camera(s), %d plane(s), method=%s, grid=%s",
+            self.ncameras, self.n_planes, self.calibration_method, calibration_grid_path,
+        )
+
         self.image_points = np.empty((self.ncameras, n_planes), dtype=object)
         self.matched_points = np.empty((self.ncameras, n_planes), dtype=object)
         self.error2dpx2rw = np.empty(self.ncameras, dtype=object)
@@ -51,8 +59,10 @@ class Calibration:
             self.calibration_method, **kwargs) for cam_idx in range(self.ncameras)], dtype=object)
 
     def preprocess_images(self, enhance_contrast: str = 'equalizeHist', filter_method: str = 'FFT', img_output_return: bool = False):
+        logger.info("Preprocessing images (contrast=%s, filter=%s) ...", enhance_contrast, filter_method)
         for cam_idx, cam in enumerate(self.cameras):
             camera_path = self.path + f'/Camera{cam}'
+            logger.info("  Camera %d: reading %d planes from %s", cam, self.n_planes, camera_path)
             self.image_files[cam_idx], images = read_images(
                 camera_path, self.n_planes)
 
@@ -61,28 +71,41 @@ class Calibration:
                                          enhance_contrast, self.plotting)
                 self.image_points[cam_idx, idx] = detect_target_points(
                     images[idx], self.target_point_diameter, self.plotting)
+                n_pts = len(self.image_points[cam_idx, idx])
+                logger.debug("    Plane %d (z=%.2f): %d points detected", idx, self.z_planes[idx], n_pts)
 
+            logger.info("  Camera %d: preprocessing done", cam)
             if img_output_return is True:
                 return images
+        logger.info("Preprocessing complete.")
 
     def match_calibration_grid(self, center_find_method):
-        for cam_idx, _ in enumerate(self.cameras):
+        logger.info("Matching calibration grid (center method=%s) ...", center_find_method)
+        for cam_idx, cam in enumerate(self.cameras):
+            logger.info("  Camera %d: matching %d planes", cam, self.n_planes)
             for idx, img_path in enumerate(self.image_files[cam_idx]):
-                print(idx, img_path)
                 output_path = self.output_path + \
                     f'{Folders.ANNOTATIONS.value}/Camera{cam_idx}_{self.z_planes[idx]}.jpg'
                 if self.n_planes != 0:
                     self.calibration_grid_points[:, 2] = self.z_planes[idx]
                 self.matched_points[cam_idx, idx] = perform_matching(
                     img_path, output_path, self.image_points[cam_idx, idx], self.calibration_grid_points, self.grid_spacing, self.target_point_diameter, center_find_method, self.plotting)
+                n_matched = len(self.matched_points[cam_idx, idx])
+                logger.info("    Plane %d/%d (z=%.2f): %d matches — %s", idx + 1, self.n_planes, self.z_planes[idx], n_matched, os.path.basename(img_path))
+            logger.info("  Camera %d: matching done", cam)
+        logger.info("Grid matching complete.")
 
     def perform_calibration(self):
-        for cam_idx, _ in enumerate(self.cameras):
+        logger.info("Performing calibration (method=%s) ...", self.calibration_method)
+        for cam_idx, cam in enumerate(self.cameras):
             cam_matches = np.vstack(self.matched_points[cam_idx, :])
             XYZ = cam_matches[:, :3]
             xy = cam_matches[:, 3:]
+            n_pts = len(cam_matches)
+            logger.info("  Camera %d: fitting %d points", cam, n_pts)
             self.calibration[cam_idx].fit(XYZ, xy)
-
+            logger.info("  Camera %d: fit complete", cam)
+        logger.info("Calibration complete.")
         return self.calibration
 
     def set_custom_zplanes(self, z_planes: list[float]):
@@ -103,7 +126,8 @@ class Calibration:
             self.calibration[cam_idx]
 
     def check_calibrated_layers(self):
-        for cam_idx, _ in enumerate(self.cameras):
+        logger.info("Checking calibrated layers ...")
+        for cam_idx, cam in enumerate(self.cameras):
             cam_matches = np.vstack(self.matched_points[cam_idx, :])
             XYZ = cam_matches[:, :3]
             xy = cam_matches[:, 3:]
@@ -113,20 +137,25 @@ class Calibration:
 
             self.error2drw2px[cam_idx], self.error2dpx2rw[cam_idx] = test_camera(self.calibration[cam_idx], n_layers=self.n_planes,
                                                                                  XYZ_grouped=XYZ_grouped, xy_grouped=xy_grouped)
+            logger.info("  Camera %d: layer test done", cam)
 
+        logger.info("Plotting 2D errors ...")
         plot_2d_error(self.error2drw2px)
         plot_2d_mean_error(self.error2drw2px)
         plot_2d_error(self.error2dpx2rw)
         plot_2d_mean_error(self.error2dpx2rw)
 
     def write_matches(self):
-        write_h5_matches(self.matched_points,
-                         self.output_path + Folders.MATCHES.value + Filenames.MATCHES.value)
+        path = self.output_path + Folders.MATCHES.value + Filenames.MATCHES.value
+        logger.info("Writing matches to %s", path)
+        write_h5_matches(self.matched_points, path)
 
     def write_calibration_test_files(self):
-        write_h5_test_files(self.matched_points,
-                            self.output_path + Folders.TESTS.value + Folders.CENTERS.value + Filenames.CAMERA.value)
+        path = self.output_path + Folders.TESTS.value + Folders.CENTERS.value + Filenames.CAMERA.value
+        logger.info("Writing calibration test files to %s", path)
+        write_h5_test_files(self.matched_points, path)
 
     def write_calibration(self):
-        write_h5_calibration(
-            self.calibration, self.output_path + Folders.GENERAL.value + Filenames.CALIBRATION.value)
+        path = self.output_path + Folders.GENERAL.value + Filenames.CALIBRATION.value
+        logger.info("Writing calibration to %s", path)
+        write_h5_calibration(self.calibration, path)

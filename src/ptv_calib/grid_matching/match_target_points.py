@@ -1,3 +1,4 @@
+import logging
 import cv2
 import freud
 import numpy as np
@@ -14,6 +15,8 @@ from ..visualization.debug_plots import (
     visualize_detected_points,
 )
 from ..visualization.plotting import display_matched_points
+
+logger = logging.getLogger(__name__)
 
 
 def _grid_adjacency(grid_points, grid_spacing, tol=0.6):
@@ -144,6 +147,6 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
     if plot == 'Normal':
         display_matched_points(raw_image, matches, output_path=output_path)
 
-    print(
-        f"Matched {len(matches)} calibration points using kept-edge stepping.")
+    logger.info(
+        "Matched %d calibration points using kept-edge stepping.", len(matches))
     return matches

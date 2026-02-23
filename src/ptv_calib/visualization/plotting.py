@@ -18,4 +18,6 @@ def display_matched_points(img, matches, output_path=None):
     plt.axis("off")
     if output_path is not None:
         plt.savefig(output_path, bbox_inches='tight', pad_inches=0.1)
-    plt.show()
+    else:
+        plt.show()
+    plt.close()
