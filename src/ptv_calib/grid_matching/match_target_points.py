@@ -1,12 +1,9 @@
 import cv2
 import freud
 import numpy as np
-import pandas as pd
 
 from .grid_manipulation import scale_grid, merge_close_vertices
-from .grid_checks import is_almost_square, point_in_polygon
 from .find_target_center import find_center
-from scipy.spatial import ConvexHull
 from scipy.spatial.distance import pdist, squareform
 
 from ..visualization.debug_plots import (
@@ -19,6 +16,13 @@ from ..visualization.debug_plots import (
 from ..visualization.plotting import display_matched_points
 
 
+def _grid_adjacency(grid_points, grid_spacing, tol=0.6):
+    """Adjacency of grid points in world XY: i,j are neighbors if 0 < dist <= (1+tol)*spacing*sqrt(2)."""
+    d = squareform(pdist(grid_points[:, :2]))
+    thresh = (1.0 + tol) * grid_spacing * np.sqrt(2)
+    return ((d > 1e-9) & (d <= thresh)).astype(np.int8)
+
+
 def perform_matching(image_path: str, output_path: str, image_points, grid_points, grid_spacing, diameterDot, center_method='Simple', plot='None'):
     """
     image: input image make sure it is grayscale
@@ -28,7 +32,7 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
     """
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     h, w = image.shape
-    raw_image = image.copy()
+    raw_image = image.copy() if plot != 'None' else image
 
     # Step1: Voronoi tessellation via freud (box is centered at origin)
     box = freud.box.Box(Lx=w+10, Ly=h+10, Lz=0)
@@ -75,36 +79,59 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
     nonzero = edge_dists[np.triu(adjacency_matrix, 1).astype(bool)]
     if len(nonzero) > 0:
         threshold = 2.0 * np.median(nonzero)
-        periodic = center_distances > threshold
-        adjacency_matrix[periodic] = 0
+        adjacency_matrix[center_distances > threshold] = 0
 
-    # Connections to plot: only where distance >= mean (over edges)
-    edge_distances = adjacency_matrix * center_distances
-    n_edges = max(1, int(adjacency_matrix.sum()) // 2)
-    mean_distance = edge_distances.sum() / (2 * n_edges)
-    keep = (adjacency_matrix == 1) & (center_distances <= mean_distance)
-    # (i, j) with i < j, each edge once
-    edges_to_plot = np.argwhere(np.triu(keep, 1))
+    # For Debug plot: edges where distance <= mean (computed only when needed)
+    if plot == 'Debug':
+        edge_dists = adjacency_matrix * center_distances
+        n_edges = max(1, int(adjacency_matrix.sum()) // 2)
+        mean_distance = edge_dists.sum() / (2 * n_edges)
+        keep = (adjacency_matrix == 1) & (center_distances <= mean_distance)
+        edges_to_plot = np.argwhere(np.triu(keep, 1))
 
     grid_points_in_image = scale_grid(
         image=image, grid_points=grid_points, facets=facets, centers=centers, center_facet=center_facet, center_point=center_point, grid_spacing=grid_spacing, plot=plot)
 
-    matches = []
-    matched_facets = set()
+    # Grid adjacency (world coords) for stepping along the grid
+    grid_adj = _grid_adjacency(grid_points, grid_spacing)
 
-    # Map each facet index to the list of grid point indices it contains
-    facet_to_grid_indices = {i: [] for i in range(len(facets))}
-    for idx, cp in enumerate(grid_points_in_image):
-        for i, facet in enumerate(facets):
-            if point_in_polygon(cp, facet):
-                facet_to_grid_indices[i].append(idx)
+    # Match using kept connections only: seed at center, then step facet→facet and grid→grid by center location
+    n_grid = len(grid_points)
+    facet_to_grid = {}
+    grid_to_facet = {k: None for k in range(n_grid)}
 
-    # Only allow facets that contain exactly one grid point
-    for i, grid_indices in facet_to_grid_indices.items():
-        if len(grid_indices) == 1:
-            idx = grid_indices[0]
-            matches.append(np.hstack([grid_points[idx], centers[i]]))
-            matched_facets.add(i)
+    # Seed: center facet = facet whose center is closest to center_point; center grid = grid point (in image) closest to center_point
+    center_facet_idx = int(
+        np.argmin(np.linalg.norm(centers - center_point, axis=1)))
+    dists_img = np.linalg.norm(grid_points_in_image - center_point, axis=1)
+    center_grid_idx = int(np.argmin(dists_img))
+
+    facet_to_grid[center_facet_idx] = center_grid_idx
+    grid_to_facet[center_grid_idx] = center_facet_idx
+    queue = [center_facet_idx]
+
+    # BFS along kept-edge adjacency; at each step pick the grid neighbor whose projected position is closest to the facet center
+    while queue:
+        i = queue.pop(0)
+        g = facet_to_grid[i]
+        for j in np.flatnonzero(adjacency_matrix[i]):
+            if j in facet_to_grid:
+                continue
+            center_j = centers[j]
+            best_k, best_d = None, np.inf
+            for k in np.flatnonzero(grid_adj[g]):
+                if grid_to_facet[k] is not None:
+                    continue
+                d = np.linalg.norm(grid_points_in_image[k] - center_j)
+                if d < best_d:
+                    best_d, best_k = d, k
+            if best_k is not None:
+                facet_to_grid[j] = best_k
+                grid_to_facet[best_k] = j
+                queue.append(j)
+
+    matches = [np.hstack([grid_points[g], centers[i]])
+               for i, g in facet_to_grid.items()]
 
     if plot == 'Debug':
         visualize_detected_points(raw_image, image_points)
@@ -113,10 +140,10 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
         visualize_connections(raw_image, centers, edges_to_plot)
         visualize_voroni(image, facets, centers, image_points)
         display_matched_points(raw_image, matches)
-        # visualize_matched_facets(matches) - TODO: might want to fix the visualization for this
 
     if plot == 'Normal':
         display_matched_points(raw_image, matches, output_path=output_path)
 
-    print(f"Matched {len(matches)} calibration points to facets.")
+    print(
+        f"Matched {len(matches)} calibration points using kept-edge stepping.")
     return matches
