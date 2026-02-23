@@ -4,7 +4,7 @@ import os
 from contextlib import nullcontext
 
 from .io.reader import read_images, load_calibration_target
-from .io.output import write_h5_matches, write_h5_calibration, write_h5_test_files
+from .io.output import read_h5_matches, write_h5_matches, write_h5_calibration, write_h5_test_files
 from .preprocessing.filter_images import fft_filter
 from .preprocessing.point_detection import detect_target_points
 from .grid_matching.match_target_points import perform_matching
@@ -17,6 +17,7 @@ from .calibration_method import CalibrationMethod
 from .calibration_tests.test_camera_calibration import test_camera
 
 from .visualization.plot_error import plot_2d_error, plot_2d_mean_error
+from .visualization.plotting import display_matched_points_from_path
 
 logger = logging.getLogger(__name__)
 
@@ -182,3 +183,74 @@ class Calibration:
         logger.info("Writing calibration to %s", path)
         with _timed_opt(logger, self.detailed_timing, "write_calibration"):
             write_h5_calibration(self.calibration, path)
+
+    def load_matches_from_file(self):
+        """Load matched points from matches.h5 into self.matched_points."""
+        path = self.output_path + Folders.MATCHES.value + Filenames.MATCHES.value
+        logger.info("Loading matches from %s", path)
+        self.matched_points = read_h5_matches(path)
+
+    def remove_matched_points(self, points_to_remove, grid_tolerance_mm=0.5, z_plane_tolerance_mm=0.01, redraw=True):
+        """
+        Remove matched grid points by (camera_index, X, Y, Z) in mm.
+        Z is the plane depth (real-world Z); the layer index is inferred from z_planes.
+        Then write matches.h5, re-run calibration, write calib.h5, and optionally
+        redraw affected layer images with remaining matches.
+        points_to_remove: list of (camera_index, X, Y, Z).
+        """
+        if not points_to_remove:
+            logger.info("No points to remove.")
+            return
+        modified_layers = set()
+        for cam_idx, X, Y, Z in points_to_remove:
+            xyz = np.array([float(X), float(Y), float(Z)])
+            z_val = float(Z)
+            layer_idx = int(np.argmin(np.abs(self.z_planes - z_val)))
+            if np.abs(self.z_planes[layer_idx] - z_val) > z_plane_tolerance_mm:
+                logger.warning(
+                    "Z=%.3f mm does not match any plane (nearest: %.3f at layer %d)",
+                    z_val, self.z_planes[layer_idx], layer_idx,
+                )
+            layer = self.matched_points[cam_idx, layer_idx]
+            arr = np.asarray(layer)
+            if arr.ndim == 1:
+                arr = arr.reshape(1, -1)
+            if len(arr) == 0:
+                logger.warning("No match found for (cam=%d, Z=%.2f, XY=%s)", cam_idx, z_val, xyz[:2])
+                continue
+            dist = np.linalg.norm(arr[:, :3] - xyz, axis=1)
+            idx = np.argmin(dist)
+            if dist[idx] > grid_tolerance_mm:
+                logger.warning("No point within tolerance for (cam=%d, Z=%.2f, XYZ=%s)", cam_idx, z_val, xyz)
+                continue
+            new_layer = np.delete(arr, idx, axis=0)
+            self.matched_points[cam_idx, layer_idx] = new_layer
+            modified_layers.add((cam_idx, layer_idx))
+            logger.info("Removed point (cam=%d, Z=%.2f mm, XYZ=%s)", cam_idx, z_val, xyz)
+        if not modified_layers:
+            return
+        if redraw and modified_layers:
+            image_paths = self._get_calibration_image_paths()
+            for (cam_idx, layer_idx) in modified_layers:
+                img_path = image_paths[cam_idx][layer_idx]
+                save_path = self.output_path + f'{Folders.ANNOTATIONS.value}/Camera{cam_idx}_{self.z_planes[layer_idx]}.jpg'
+                title = f"Camera {cam_idx} Z={self.z_planes[layer_idx]:.1f} mm (after removal)"
+                logger.info("Saving redrawn image to %s", save_path)
+                print(f"Saving redrawn image to: {save_path}")
+                display_matched_points_from_path(
+                    img_path, self.matched_points[cam_idx, layer_idx], title=title, save_path=save_path
+                )
+        self.write_matches()
+        self.perform_calibration()
+        self.write_calibration()
+        logger.info("Matches and calibration files updated.")
+
+    def _get_calibration_image_paths(self):
+        """Return image_paths[cam_idx][layer_idx] from folder_path/cameras/n_planes."""
+        image_paths = np.empty((self.ncameras, self.n_planes), dtype=object)
+        for cam_idx, cam in enumerate(self.cameras):
+            camera_path = self.path + f'/Camera{cam}'
+            files, _ = read_images(camera_path, self.n_planes)
+            for layer_idx in range(self.n_planes):
+                image_paths[cam_idx, layer_idx] = files[layer_idx]
+        return image_paths
