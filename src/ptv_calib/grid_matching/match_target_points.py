@@ -7,8 +7,15 @@ from .grid_manipulation import scale_grid, merge_close_vertices
 from .grid_checks import is_almost_square, point_in_polygon
 from .find_target_center import find_center
 from scipy.spatial import ConvexHull
+from scipy.spatial.distance import pdist, squareform
 
-from ..visualization.debug_plots import visualize_center, visualize_grid_points, visualize_voroni, visualize_detected_points
+from ..visualization.debug_plots import (
+    visualize_center,
+    visualize_connections,
+    visualize_grid_points,
+    visualize_voroni,
+    visualize_detected_points,
+)
 from ..visualization.plotting import display_matched_points
 
 
@@ -22,28 +29,6 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     h, w = image.shape
     raw_image = image.copy()
-
-    # TODO: something like this could be used to capture more calibration points in the future
-    # # Compute the convex hull
-    # hull = ConvexHull(image_points)
-    # img_pts = np.vstack(image_points)
-    # # Extract the outer layer points (vertices of the hull)
-    # outer_points_indices = np.array(hull.vertices)
-    # outer_points = img_pts[outer_points_indices]
-
-    # # Move outer points 20 pixels further out from the center of the hull
-    # hull_center = np.mean(outer_points, axis=0)
-    # direction_vectors = outer_points - hull_center
-    # norms = np.linalg.norm(direction_vectors, axis=1, keepdims=True)
-    # norms[norms == 0] = 1  # Prevent division by zero
-    # unit_vectors = direction_vectors / norms
-    # moved_outer_points = outer_points + unit_vectors * 5
-    # # Ensure moved_outer_points stay within image bounds (1 pixel away from edge)
-    # moved_outer_points[:, 0] = np.clip(moved_outer_points[:, 0], 1, w - 2)
-    # moved_outer_points[:, 1] = np.clip(moved_outer_points[:, 1], 1, h - 2)
-
-    # # Optionally, you can append these moved points to image_points if needed
-    # # image_points = np.vstack([image_points, moved_outer_points])
 
     # Step1: Voronoi tessellation via freud (box is centered at origin)
     box = freud.box.Box(Lx=w+10, Ly=h+10, Lz=0)
@@ -69,12 +54,37 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
     # Centers: one per cell, same order as input points (use original image coordinates)
     centers = np.asarray(image_points, dtype=float)
 
-    # TODO: filter for correct and wrong facets
-    # square_facets = tuple(f for f in facets if is_almost_square(f))
     facets = [merge_close_vertices(np.array(f), diameterDot) for f in facets]
 
     center_facet, center_point = find_center(
         center_method=center_method, facets=facets, centers=centers)
+
+    # Build adjacency matrix from Voronoi neighbor list (no periodicity)
+    # voro.nlist is periodic; keep only edges where centers are close in the image
+    n_cells = len(facets)
+    adjacency_matrix = np.zeros((n_cells, n_cells), dtype=np.int8)
+    for i, j in voro.nlist:
+        adjacency_matrix[i, j] = 1
+        adjacency_matrix[j, i] = 1
+
+    # Pairwise distances between cell centers (symmetric, diagonal zero)
+    center_distances = squareform(pdist(centers))
+
+    # Drop periodic wraparound neighbors: keep edge (i,j) only if distance is "local"
+    edge_dists = adjacency_matrix * center_distances
+    nonzero = edge_dists[np.triu(adjacency_matrix, 1).astype(bool)]
+    if len(nonzero) > 0:
+        threshold = 2.0 * np.median(nonzero)
+        periodic = center_distances > threshold
+        adjacency_matrix[periodic] = 0
+
+    # Connections to plot: only where distance >= mean (over edges)
+    edge_distances = adjacency_matrix * center_distances
+    n_edges = max(1, int(adjacency_matrix.sum()) // 2)
+    mean_distance = edge_distances.sum() / (2 * n_edges)
+    keep = (adjacency_matrix == 1) & (center_distances <= mean_distance)
+    # (i, j) with i < j, each edge once
+    edges_to_plot = np.argwhere(np.triu(keep, 1))
 
     grid_points_in_image = scale_grid(
         image=image, grid_points=grid_points, facets=facets, centers=centers, center_facet=center_facet, center_point=center_point, grid_spacing=grid_spacing, plot=plot)
@@ -100,6 +110,7 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
         visualize_detected_points(raw_image, image_points)
         visualize_center(raw_image, facets, center_facet, center_point)
         visualize_grid_points(raw_image, grid_points_in_image)
+        visualize_connections(raw_image, centers, edges_to_plot)
         visualize_voroni(image, facets, centers, image_points)
         display_matched_points(raw_image, matches)
         # visualize_matched_facets(matches) - TODO: might want to fix the visualization for this

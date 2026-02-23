@@ -63,3 +63,23 @@ def visualize_detected_points(image, image_points):
     plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     plt.axis("off")
     plt.show()
+
+
+def visualize_connections(image, centers, edges):
+    """
+    Draw lines between centers for the given edges only.
+    edges: (N, 2) array of (i, j) facet indices; line is drawn between centers[i] and centers[j].
+    """
+    img = image.copy() if len(image.shape) == 2 else image.copy()
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    for i, j in edges:
+        pt1 = (int(centers[i, 0]), int(centers[i, 1]))
+        pt2 = (int(centers[j, 0]), int(centers[j, 1]))
+        cv2.line(img, pt1, pt2, (0, 255, 0), 1)
+    for idx in range(len(centers)):
+        c = (int(centers[idx, 0]), int(centers[idx, 1]))
+        cv2.circle(img, c, 3, (0, 0, 255), -1)
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.show()
