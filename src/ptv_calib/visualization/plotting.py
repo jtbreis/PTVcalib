@@ -1,10 +1,19 @@
 import cv2
+import numpy as np
 import matplotlib.pyplot as plt
 
 
 def display_matched_points(img, matches, output_path=None):
+    # OpenCV cvtColor requires uint8 or float32; preloaded images from fft_filter are float64
+    img = np.asarray(img)
+    if img.dtype != np.uint8:
+        img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    if img.ndim == 2:
+        display = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    else:
+        display = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     plt.figure(figsize=(20, 20))
-    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    plt.imshow(display)
     for match in matches:
         # img_pt: (x, y) in image, real_world_pt: (X, Y) in real world
         [X, Y, Z, x, y] = match

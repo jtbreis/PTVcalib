@@ -26,16 +26,28 @@ def _grid_adjacency(grid_points, grid_spacing, tol=0.6):
     return ((d > 1e-9) & (d <= thresh)).astype(np.int8)
 
 
-def perform_matching(image_path: str, output_path: str, image_points, grid_points, grid_spacing, diameterDot, center_method='Simple', plot='None'):
+def perform_matching(image_path: str, output_path: str, image_points, grid_points, grid_spacing, diameterDot, center_method='Simple', plot='None', image=None):
     """
-    image: input image make sure it is grayscale
+    image_path: path to image (used if image is None)
+    image: optional pre-loaded grayscale image to avoid re-reading from disk
     image_points: numpy array of detected points
     grid_points: numpy array with grid points
     matches numpy array (Nx5) [X, Y, Z, x, y]
     """
-    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if image is not None:
+        image = np.asarray(image)
+        if image.ndim == 3:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     h, w = image.shape
     raw_image = image.copy() if plot != 'None' else image
+    # Preloaded images from fft_filter are float64; OpenCV display/drawing need uint8, 3-channel for cvtColor(BGR2RGB)
+    if plot != 'None':
+        if raw_image.dtype != np.uint8:
+            raw_image = cv2.normalize(raw_image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        if raw_image.ndim == 2:
+            raw_image = cv2.cvtColor(raw_image, cv2.COLOR_GRAY2BGR)
 
     # Step1: Voronoi tessellation via freud (box is centered at origin)
     box = freud.box.Box(Lx=w+10, Ly=h+10, Lz=0)

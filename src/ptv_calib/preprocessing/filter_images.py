@@ -4,8 +4,15 @@ import numpy as np
 from ..visualization.image_processing import plot_fft_spectrum, plot_enhanced_comparison
 
 
-def fft_filter(img, diameterDot, contrast='equalizeHist', plotting='None'):
-    img = cv2.fastNlMeansDenoising(img, None, int(diameterDot/2))
+def fft_filter(img, diameterDot, contrast='equalizeHist', plotting='None', denoise_method='nlmeans'):
+    """Apply FFT-based filtering. denoise_method: 'nlmeans' (slower, default) or 'bilateral' (faster)."""
+    if denoise_method == 'nlmeans':
+        img = cv2.fastNlMeansDenoising(img, None, int(diameterDot/2))
+    elif denoise_method == 'bilateral':
+        d = max(1, int(diameterDot / 2))
+        img = cv2.bilateralFilter(img, d=d, sigmaColor=50, sigmaSpace=50)
+    elif denoise_method != 'none':
+        raise ValueError(f"denoise_method must be 'nlmeans', 'bilateral', or 'none', got {denoise_method!r}")
 
     if contrast == 'equalizeHist':
         img = cv2.equalizeHist(img)
