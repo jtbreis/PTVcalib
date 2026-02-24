@@ -6,7 +6,11 @@ def find_center(center_method: str, facets, centers):
     if center_method == 'Mean':
         center_facet, center_point = mean_center(facets, centers)
     elif center_method == 'TSI-backlight':
-        center_facet, center_point = tsi_backlight_center(facets, centers)
+        result = tsi_backlight_center(facets, centers)
+        if result is None:
+            center_facet, center_point = mean_center(facets, centers)
+        else:
+            center_facet, center_point = result
     else:
         raise ValueError(f"Unknown center_method method: {center_method}")
 
@@ -40,3 +44,4 @@ def tsi_backlight_center(facets, centers):
         neighbor_vertex_counts = [len(facets[j]) for j in neighbor_indices]
         if neighbor_vertex_counts.count(6) == 2 and neighbor_vertex_counts.count(5) == 2:
             return facet, center
+    return None
