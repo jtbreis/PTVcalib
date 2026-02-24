@@ -156,7 +156,7 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
                for i, g in facet_to_grid.items()]
 
     if plot == 'Debug':
-        visualize_detected_points(raw_image, image_points)
+        visualize_detected_points(raw_image, centers, show_indices=True)
         visualize_center(raw_image, facets, center_facet, center_point)
         visualize_grid_points(raw_image, grid_points_in_image)
         visualize_connections(raw_image, centers, edges_to_plot)

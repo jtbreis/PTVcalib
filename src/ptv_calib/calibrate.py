@@ -20,6 +20,7 @@ from .calibration_tests.test_camera_calibration import test_camera
 
 from .visualization.plot_error import plot_2d_error, plot_2d_mean_error
 from .visualization.plotting import display_matched_points_from_path
+from .visualization.debug_plots import visualize_detected_points
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,8 @@ class Calibration:
                     self._preloaded_images[cam_idx, idx] = images[idx]
                     n_pts = len(self.image_points[cam_idx, idx])
                     logger.debug("    Plane %d (z=%.2f): %d points detected", idx, self.z_planes[idx], n_pts)
+                    if self.plotting == 'Normal':
+                        visualize_detected_points(images[idx], self.image_points[cam_idx, idx], show_indices=True, camera_index=cam_idx, layer_index=idx)
 
                 logger.info("  Camera %d: preprocessing done", cam)
                 if img_output_return is True:
@@ -142,6 +145,40 @@ class Calibration:
 
     def set_plotting_mode(self, plotting: str = 'None'):
         self.plotting = plotting
+
+    def display_detected_points(self, cam_idx: int, plane_idx: int):
+        """
+        Display the image for the given camera and plane with current detected points
+        and their indices. Call after preprocess_images to inspect or after removing points.
+        """
+        image = self._preloaded_images[cam_idx, plane_idx]
+        if image is None:
+            logger.warning("No preloaded image for camera %d plane %d; run preprocess_images first.", cam_idx, plane_idx)
+            return
+        points = self.image_points[cam_idx, plane_idx]
+        visualize_detected_points(image, points, show_indices=True, camera_index=cam_idx, layer_index=plane_idx)
+
+    def remove_detected_points(self, cam_idx: int, plane_idx: int, indices_to_remove, redisplay: bool = True):
+        """
+        Remove detected points by index for one camera/plane. indices_to_remove: list of ints
+        (e.g. [1, 5, 7]). After removal, if redisplay is True, shows the adjusted points on the image.
+        Call after preprocess_images to drop spurious detections.
+        """
+        points = np.asarray(self.image_points[cam_idx, plane_idx], dtype=float)
+        if points.ndim == 1:
+            points = points.reshape(-1, 2)
+        n = len(points)
+        to_remove = set(int(i) for i in indices_to_remove)
+        keep = [i for i in range(n) if i not in to_remove]
+        if len(keep) == 0:
+            logger.warning("Removing all points for camera %d plane %d is not allowed.", cam_idx, plane_idx)
+            return
+        new_points = points[keep]
+        self.image_points[cam_idx, plane_idx] = new_points
+        logger.info("Removed %d point(s) for camera %d plane %d; %d points remaining.",
+                    len(to_remove), cam_idx, plane_idx, len(new_points))
+        if redisplay:
+            self.display_detected_points(cam_idx, plane_idx)
 
     def set_calibration_method(self, calibration_method='Soloff'):
         self.calibration = np.empty(self.ncameras, dtype=object)
