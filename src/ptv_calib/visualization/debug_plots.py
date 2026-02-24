@@ -3,7 +3,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def _ensure_uint8_bgr(image):
+    """Convert image to uint8 BGR for OpenCV drawing (rejects CV_64F)."""
+    img = np.asarray(image)
+    if img.dtype != np.uint8:
+        img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    return img.copy()
+
+
 def visualize_voroni(image, facets, centers, points):
+    image = _ensure_uint8_bgr(image)
     for idx, facet in enumerate(facets):
         pts = np.array(facet, np.int32)
         cv2.fillConvexPoly(image, pts, (np.random.randint(
@@ -26,7 +37,7 @@ def visualize_voroni(image, facets, centers, points):
 
 def visualize_center(image, facets, center, center_point):
     # Draw all facets faintly
-    img_highlight = image.copy()
+    img_highlight = _ensure_uint8_bgr(image)
     for facet in facets:
         pts = np.array(facet, np.int32)
         overlay = img_highlight.copy()
@@ -51,7 +62,8 @@ def visualize_center(image, facets, center, center_point):
 
 def visualize_grid_points(image, grid_points):
     plt.scatter(grid_points[:, 0], grid_points[:, 1])
-    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    img = _ensure_uint8_bgr(image)
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.axis("off")
     plt.show()
 
@@ -60,7 +72,8 @@ def visualize_detected_points(image, image_points):
     points = np.vstack(image_points)
     print(points.shape)
     plt.scatter(points[:, 0], points[:, 1])
-    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    img = _ensure_uint8_bgr(image)
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.axis("off")
     plt.show()
 
@@ -70,9 +83,7 @@ def visualize_connections(image, centers, edges):
     Draw lines between centers for the given edges only.
     edges: (N, 2) array of (i, j) facet indices; line is drawn between centers[i] and centers[j].
     """
-    img = image.copy() if len(image.shape) == 2 else image.copy()
-    if len(img.shape) == 2:
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    img = _ensure_uint8_bgr(image)
     for i, j in edges:
         pt1 = (int(centers[i, 0]), int(centers[i, 1]))
         pt2 = (int(centers[j, 0]), int(centers[j, 1]))

@@ -18,6 +18,9 @@ from ..visualization.plotting import display_matched_points
 
 logger = logging.getLogger(__name__)
 
+# Minimum edge length as fraction of typical grid-neighbor distance (pixels); edges shorter than this are dropped
+MIN_EDGE_DISTANCE_FRACTION = 0.5
+
 
 def _grid_adjacency(grid_points, grid_spacing, tol=0.6):
     """Adjacency of grid points in world XY: i,j are neighbors if 0 < dist <= (1+tol)*spacing*sqrt(2)."""
@@ -93,8 +96,12 @@ def perform_matching(image_path: str, output_path: str, image_points, grid_point
     edge_dists = adjacency_matrix * center_distances
     nonzero = edge_dists[np.triu(adjacency_matrix, 1).astype(bool)]
     if len(nonzero) > 0:
-        threshold = 2.0 * np.median(nonzero)
+        typical_spacing = np.median(nonzero)
+        threshold = 2.0 * typical_spacing
         adjacency_matrix[center_distances > threshold] = 0
+        # Drop edges that are too close: true grid neighbors have ~typical_spacing in pixels
+        min_pixel_distance = typical_spacing * MIN_EDGE_DISTANCE_FRACTION
+        adjacency_matrix[center_distances < min_pixel_distance] = 0
 
     # For Debug plot: edges where distance <= mean (computed only when needed)
     if plot == 'Debug':

@@ -12,7 +12,8 @@ def fft_filter(img, diameterDot, contrast='equalizeHist', plotting='None', denoi
         d = max(1, int(diameterDot / 2))
         img = cv2.bilateralFilter(img, d=d, sigmaColor=50, sigmaSpace=50)
     elif denoise_method != 'none':
-        raise ValueError(f"denoise_method must be 'nlmeans', 'bilateral', or 'none', got {denoise_method!r}")
+        raise ValueError(
+            f"denoise_method must be 'nlmeans', 'bilateral', or 'none', got {denoise_method!r}")
 
     if contrast == 'equalizeHist':
         img = cv2.equalizeHist(img)

@@ -1,7 +1,9 @@
 import logging
-import numpy as np
 import os
 from contextlib import nullcontext
+
+import cv2
+import numpy as np
 
 from .io.reader import read_images, load_calibration_target
 from .io.output import read_h5_matches, write_h5_matches, write_h5_calibration, write_h5_test_files
