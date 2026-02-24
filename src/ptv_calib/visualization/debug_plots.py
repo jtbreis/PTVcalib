@@ -223,3 +223,29 @@ def visualize_connections(image, centers, edges):
     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.axis("off")
     plt.show()
+
+
+def visualize_grid_edges(grid_xy, edges, title="Grid points and edge connections"):
+    """
+    Plot grid points (world XY) and lines for each edge connection.
+    grid_xy: (N, 2) array of grid point coordinates.
+    edges: list of (i, j) node index pairs; line is drawn between grid_xy[i] and grid_xy[j].
+    """
+    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+    ax.set_aspect("equal")
+    for i, j in edges:
+        ax.plot(
+            [grid_xy[i, 0], grid_xy[j, 0]],
+            [grid_xy[i, 1], grid_xy[j, 1]],
+            "b-",
+            linewidth=0.8,
+            zorder=0,
+        )
+    ax.scatter(grid_xy[:, 0], grid_xy[:, 1], c="C1", s=12, zorder=1, label="grid points")
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
