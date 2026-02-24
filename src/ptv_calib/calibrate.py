@@ -3,6 +3,7 @@ import os
 from contextlib import nullcontext
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 
 from .io.reader import read_images, load_calibration_target
@@ -179,6 +180,44 @@ class Calibration:
                     len(to_remove), cam_idx, plane_idx, len(new_points))
         if redisplay:
             self.display_detected_points(cam_idx, plane_idx)
+
+    def interactively_remove_detected_points(self, cam_idx: int, plane_idx: int):
+        """
+        Display the image with detected points and prompt for indices to remove.
+        - Press Enter (empty input) to accept and move to the next picture.
+        - Enter one or more indices (e.g. 5 or 5,6,7 or 5 6 7) to remove those points;
+          the image is redrawn and you are prompted again until you press Enter.
+        Works in Jupyter: use the cell input box to type indices or Enter.
+        """
+        while True:
+            self.display_detected_points(cam_idx, plane_idx)
+            raw = input(
+                "Index to remove (or comma/space-separated list); Enter for next image: "
+            ).strip()
+            if raw == "":
+                plt.close()
+                return
+            try:
+                parts = raw.replace(",", " ").split()
+                indices = [int(p) for p in parts]
+            except ValueError:
+                print("Invalid input. Enter integers (e.g. 5 or 5,6,7).")
+                plt.close()
+                continue
+            points = np.asarray(self.image_points[cam_idx, plane_idx], dtype=float)
+            if points.ndim == 1:
+                points = points.reshape(-1, 2)
+            n = len(points)
+            invalid = [i for i in indices if i < 0 or i >= n]
+            if invalid:
+                print(f"Invalid index(es) {invalid}; valid range 0..{n - 1}.")
+                plt.close()
+                continue
+            plt.close()
+            self.remove_detected_points(
+                cam_idx, plane_idx, indices_to_remove=indices, redisplay=False
+            )
+            # loop again to show updated image and ask for more
 
     def set_calibration_method(self, calibration_method='Soloff'):
         self.calibration = np.empty(self.ncameras, dtype=object)
