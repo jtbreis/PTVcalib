@@ -5,17 +5,19 @@ from ..visualization.image_processing import plot_fft_spectrum, plot_enhanced_co
 
 
 def fft_filter(img, diameterDot, contrast='equalizeHist', plotting='None', denoise_method='nlmeans',
-               highpass_sigma_fraction=0.03, highpass_strength=0.4):
+               lowcut_sigma_fraction=0.04, highcut_sigma_fraction=None):
     """
-    Apply FFT-based filtering that preserves sharp dot centers and avoids dark-blob artifacts.
+    Apply FFT-based band-pass filtering to keep grid points and discard reflections.
 
-    Uses a smooth Gaussian high-pass (no hard mask) and adds the high-pass component to the
-    original image instead of replacing it, so DC and low frequencies (bright centers) are
-    preserved and only background non-uniformity is reduced.
+    Removes low spatial frequencies (reflections, glare, smooth background, illumination
+    gradients) and optionally very high frequencies (noise). Mid frequencies that contain
+    the grid dots are preserved. The removed low-frequency content is replaced by a
+    constant (mean level) so the result has even background and clear dots.
 
     denoise_method: 'nlmeans' (slower, default), 'bilateral' (faster), or 'none'.
-    highpass_sigma_fraction: cutoff scale for Gaussian high-pass, as fraction of image size (default 0.03).
-    highpass_strength: weight of high-pass added to image (default 0.4); higher = more background flattening.
+    lowcut_sigma_fraction: cutoff for removing low frequencies, as fraction of image size (default 0.04).
+      Larger = more aggressive removal of reflections/smooth areas.
+    highcut_sigma_fraction: if set, removes frequencies above this (fraction of image size); None = keep all high freq.
     """
     img = np.asarray(img, dtype=np.float64)
     if img.ndim == 3:
@@ -41,29 +43,22 @@ def fft_filter(img, diameterDot, contrast='equalizeHist', plotting='None', denoi
         img_u8 = cv2.equalizeHist(img_u8)
         img = img_u8.astype(np.float64)
 
-    # Original (preserves sharp centers); we'll add a scaled high-pass to this
     base = np.copy(img)
-
-    # Smooth Gaussian high-pass mask to avoid ringing (no hard edges in freq domain)
     rows, cols = img.shape
-    mask_hp = _gaussian_highpass_mask(rows, cols, highpass_sigma_fraction)
+    mean_level = np.mean(base)
 
-    # FFT: get high-pass component only (zero-mean detail)
+    # Band-pass mask: remove low freq (reflections) and optionally very high freq (noise)
+    mask = _bandpass_mask(rows, cols, lowcut_sigma_fraction, highcut_sigma_fraction)
+
     f = np.fft.fft2(img)
     fshift = np.fft.fftshift(f)
     magnitude_spectrum = np.log(np.abs(fshift) + 1)
 
-    fshift_hp = fshift * mask_hp
-    f_ishift = np.fft.ifftshift(fshift_hp)
-    highpass = np.real(np.fft.ifft2(f_ishift))
-    # Zero-mean so we don't shift global intensity
-    highpass = highpass - np.mean(highpass)
-    # Scale so typical values are on the order of image range
-    scale = np.std(base) / (np.std(highpass) + 1e-8)
-    highpass = highpass * scale
-
-    # Add high-pass to base: preserves bright centers, flattens slow background
-    img_filtered = base + highpass_strength * highpass
+    fshift_bp = fshift * mask
+    f_ishift = np.fft.ifftshift(fshift_bp)
+    img_bp = np.real(np.fft.ifft2(f_ishift))
+    # Band-pass output is roughly zero-mean; restore mean level so grid dots stay bright
+    img_filtered = img_bp + mean_level
     img_filtered = np.clip(img_filtered, 0, 255)
 
     if plotting == 'Debug':
@@ -77,6 +72,32 @@ def fft_filter(img, diameterDot, contrast='equalizeHist', plotting='None', denoi
         )
 
     return img_filtered
+
+
+def _bandpass_mask(rows, cols, lowcut_sigma_fraction=0.04, highcut_sigma_fraction=None):
+    """
+    Smooth band-pass in frequency domain: attenuate very low (reflections) and optionally very high (noise).
+    Returns a complex mask (real-valued in practice) for multiplying with fftshifted FFT.
+    """
+    crow, ccol = rows // 2, cols // 2
+    y = np.arange(rows, dtype=np.float64) - crow
+    x = np.arange(cols, dtype=np.float64) - ccol
+    xx, yy = np.meshgrid(x, y)
+    r2 = xx * xx + yy * yy
+    r = np.sqrt(r2)
+
+    # Low cutoff: remove frequencies below this (Gaussian high-pass part)
+    sigma_low = lowcut_sigma_fraction * max(rows, cols)
+    lowpass = np.exp(-r2 / (2 * sigma_low * sigma_low))
+    mask = 1.0 - lowpass
+
+    # High cutoff: optionally remove frequencies above this (Gaussian roll-off)
+    if highcut_sigma_fraction is not None:
+        sigma_high = highcut_sigma_fraction * max(rows, cols)
+        highpass_rolloff = np.exp(-r2 / (2 * sigma_high * sigma_high))
+        mask = mask * highpass_rolloff
+
+    return mask.astype(np.complex128)
 
 
 def _gaussian_highpass_mask(rows, cols, sigma_fraction=0.03):

@@ -87,7 +87,7 @@ class Calibration:
                                                  enhance_contrast, self.plotting, denoise_method=denoise_method)
                     with _timed_opt(logger, self.detailed_timing, "    detect_target_points", extra_msg=f"Camera {cam} plane {idx}"):
                         self.image_points[cam_idx, idx] = detect_target_points(
-                            images[idx], self.target_point_diameter, self.plotting)
+                            images[idx], self.target_point_diameter, plot=(self.plotting == 'Debug'))
                     self._preloaded_images[cam_idx, idx] = images[idx]
                     n_pts = len(self.image_points[cam_idx, idx])
                     logger.debug("    Plane %d (z=%.2f): %d points detected", idx, self.z_planes[idx], n_pts)
