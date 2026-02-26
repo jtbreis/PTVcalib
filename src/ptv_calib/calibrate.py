@@ -187,21 +187,32 @@ class Calibration:
         - Press Enter (empty input) to accept and move to the next picture.
         - Enter one or more indices (e.g. 5 or 5,6,7 or 5 6 7) to remove those points;
           the image is redrawn and you are prompted again until you press Enter.
+        - Enter "undo" or "u" to restore the last removed point(s) for this image.
         Works in Jupyter: use the cell input box to type indices or Enter.
         """
+        last_state = None  # copy of points before last removal (for undo)
         while True:
             self.display_detected_points(cam_idx, plane_idx)
             raw = input(
-                "Index to remove (or comma/space-separated list); Enter for next image: "
+                "Index to remove (or list); 'undo'/'u' to undo last removal; Enter for next image: "
             ).strip()
             if raw == "":
                 plt.close()
                 return
+            if raw.lower() in ("undo", "u"):
+                plt.close()
+                if last_state is None:
+                    print("Nothing to undo.")
+                    continue
+                self.image_points[cam_idx, plane_idx] = last_state.copy()
+                last_state = None
+                logger.info("Undid last removal for camera %d plane %d.", cam_idx, plane_idx)
+                continue
             try:
                 parts = raw.replace(",", " ").split()
                 indices = [int(p) for p in parts]
             except ValueError:
-                print("Invalid input. Enter integers (e.g. 5 or 5,6,7).")
+                print("Invalid input. Enter integers (e.g. 5 or 5,6,7) or 'undo'.")
                 plt.close()
                 continue
             points = np.asarray(self.image_points[cam_idx, plane_idx], dtype=float)
@@ -214,6 +225,9 @@ class Calibration:
                 plt.close()
                 continue
             plt.close()
+            last_state = np.asarray(self.image_points[cam_idx, plane_idx], dtype=float).copy()
+            if last_state.ndim == 1:
+                last_state = last_state.reshape(-1, 2)
             self.remove_detected_points(
                 cam_idx, plane_idx, indices_to_remove=indices, redisplay=False
             )
