@@ -116,14 +116,60 @@ def _edge_points(points, width, height, margin_fraction=0.015):
     return out
 
 
-def visualize_detected_points(image, image_points, show_indices=True, camera_index=None, layer_index=None, show_close_pairs=True):
+def _draw_detected_points_cv2(image_bgr, points, scale=1.0, index_colors=None):
+    """
+    Draw point markers and index labels on image using OpenCV (single raster).
+    points: (N, 2) in image coordinates. scale: 1.0 = full size; use <1 to draw on downscaled coords.
+    index_colors: optional dict index -> (bg_bgr, text_white); bg_bgr is (B,G,R), text_white True = white text.
+    Returns BGR image with points and labels drawn. Labels are shifted when near edges so they stay fully visible.
+    """
+    out = image_bgr.copy()
+    h, w = out.shape[:2]
+    # Slightly larger font for readability while keeping indices distinguishable
+    font_scale = 0.28 + 0.00016 * max(w, h)
+    thickness = 1
+    radius_dot = max(1, int(2 * scale))
+    pad = 2
+    for i, (x, y) in enumerate(points):
+        xi, yi = int(round(x * scale)), int(round(y * scale))
+        if xi < 0 or xi >= w or yi < 0 or yi >= h:
+            continue
+        cv2.circle(out, (xi, yi), radius_dot, (0, 0, 255), -1)
+        text = str(i)
+        (tw, th), bl = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+        box_w, box_h = tw + 2 * pad, th + bl + 2 * pad
+        # Center box near point (label above point)
+        x1 = xi - box_w // 2
+        y1 = yi - box_h - pad
+        x2 = x1 + box_w
+        y2 = y1 + box_h
+        # Keep full label inside image for edge points (shift box if it would be clipped)
+        if x1 < 0:
+            x1, x2 = 0, box_w
+        elif x2 > w:
+            x1, x2 = w - box_w, w
+        if y1 < 0:
+            y1, y2 = 0, box_h
+        elif y2 > h:
+            y1, y2 = h - box_h, h
+        if index_colors and i in index_colors:
+            bg_bgr, text_white = index_colors[i]
+            text_color = (255, 255, 255) if text_white else (0, 0, 0)
+        else:
+            bg_bgr, text_white = (0, 0, 0), True
+            text_color = (255, 255, 255)
+        cv2.rectangle(out, (x1, y1), (x2, y2), bg_bgr, -1)
+        cv2.putText(out, text, (x1 + pad, y2 - pad - bl), cv2.FONT_HERSHEY_SIMPLEX,
+                    font_scale, text_color, thickness, cv2.LINE_AA)
+    return out
+
+
+def visualize_detected_points(image, image_points, show_indices=True, camera_index=None, layer_index=None, show_close_pairs=True, fast_draw=True):
     """
     Plot detected points on the image. image_points: Nx2 array or list of (x,y).
     If show_indices is True, each point is labeled with its index (0, 1, 2, ...).
-    If show_close_pairs is True, highlights: red = very close pairs; yellow = other potential weird (close);
-    blue = too far from neighbors (isolated); orange = near image edge. Index backgrounds match.
-    Figure size and DPI are set so the image and index text are readable.
-    If camera_index and layer_index are provided, they are shown in the plot title.
+    If fast_draw is True (default), uses OpenCV + one imshow for speed; indices stay readable.
+    If fast_draw is False, uses matplotlib with full close-pairs highlighting (red/yellow/blue/orange).
     """
     points = np.asarray(image_points, dtype=float)
     if points.size == 0:
@@ -135,7 +181,70 @@ def visualize_detected_points(image, image_points, show_indices=True, camera_ind
             points = points.T
     img = _ensure_uint8_bgr(image)
     h, w = img.shape[:2]
-    # Larger figure so the image and index numbers are readable (longer side ~14 inches, 150 DPI)
+
+    # Fast path: single OpenCV-drawn image + one imshow (much faster for many points)
+    if fast_draw:
+        max_display = 1400
+        scale = 1.0
+        if max(h, w) > max_display:
+            scale = max_display / max(h, w)
+            new_w, new_h = int(w * scale), int(h * scale)
+            img_display = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            points_display = points * scale
+        else:
+            img_display = img
+            points_display = points
+            new_w, new_h = w, h
+        index_colors = None
+        if show_close_pairs and points_display.shape[0] >= 4:
+            close_red = _close_pairs(points_display, factor=0.4)
+            close_yellow = _close_pairs(points_display, factor=0.78)
+            far_point_indices = _far_points(points_display, factor=1.6)
+            edge_point_indices = _edge_points(points_display, new_w, new_h)
+            close_point_indices = set()
+            for i, j in close_red:
+                close_point_indices.add(i)
+                close_point_indices.add(j)
+            yellow_point_indices = set()
+            for i, j in close_yellow:
+                if i not in close_point_indices:
+                    yellow_point_indices.add(i)
+                if j not in close_point_indices:
+                    yellow_point_indices.add(j)
+            index_colors = {}
+            for i in range(len(points_display)):
+                if i in close_point_indices:
+                    index_colors[i] = ((0, 0, 255), True)
+                elif i in yellow_point_indices:
+                    index_colors[i] = ((0, 215, 255), False)
+                elif i in far_point_indices:
+                    index_colors[i] = ((255, 144, 30), True)
+                elif i in edge_point_indices:
+                    index_colors[i] = ((0, 165, 255), True)
+                else:
+                    index_colors[i] = ((0, 0, 0), True)
+        if show_indices:
+            display_bgr = _draw_detected_points_cv2(img_display, points_display, scale=1.0, index_colors=index_colors)
+        else:
+            display_bgr = img_display.copy()
+            for i, (x, y) in enumerate(points_display):
+                xi, yi = int(round(x)), int(round(y))
+                if 0 <= xi < img_display.shape[1] and 0 <= yi < img_display.shape[0]:
+                    cv2.circle(display_bgr, (xi, yi), 3, (0, 0, 255), -1)
+        display_rgb = cv2.cvtColor(display_bgr, cv2.COLOR_BGR2RGB)
+        fig_inches = 12
+        scale_fig = max(display_rgb.shape[0], display_rgb.shape[1]) / fig_inches
+        figsize = (display_rgb.shape[1] / scale_fig, display_rgb.shape[0] / scale_fig)
+        fig, ax = plt.subplots(figsize=figsize, dpi=100)
+        ax.imshow(display_rgb)
+        if camera_index is not None and layer_index is not None:
+            ax.set_title(f"Camera {camera_index}, Layer {layer_index}")
+        ax.axis("off")
+        plt.tight_layout()
+        plt.show()
+        return
+
+    # Full path: matplotlib with close-pairs highlighting (slower)
     fig_inches = 14
     scale = max(h, w) / fig_inches
     figsize = (w / scale, h / scale)

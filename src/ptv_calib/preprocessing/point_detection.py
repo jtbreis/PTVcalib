@@ -3,22 +3,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def detect_target_points(image, diameterDot=10, plot=False):
+def detect_target_points(image, diameterDot=10, plot=False, edge_margin=None):
     # Step 1: create a shifted image with a known radius
     radiusDot = int(diameterDot/2)
     img = create_shifted_image(image, radius=radiusDot)
     points = detect_circles_locations(img, radiusDot, plot)
-    # points = remove_edge_points(image, points)
+    # Remove points too close to image border (avoids false detections at dark/light edges)
+    if edge_margin is None:
+        edge_margin = max(radiusDot * 2, 10)  # at least one diameter from border
+    points = remove_edge_points(image, points, margin=edge_margin)
     return points
 
 
-def remove_edge_points(image, points):
-    # necessary to remove points that are too close to the edge / lie on the edge for Voroni tessalation
+def remove_edge_points(image, points, margin=10):
+    """Remove points too close to the image border to avoid false detections at edges (e.g. dark/light boundary)."""
     height, width = image.shape
     filtered_points = [
         (x, y)
         for (x, y) in points
-        if 5 <= x < width - 5 and 5 <= y < height - 5
+        if margin <= x < width - margin and margin <= y < height - margin
     ]
     return filtered_points
 

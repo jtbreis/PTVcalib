@@ -73,7 +73,7 @@ class Calibration:
         # Optional: store preloaded images to avoid re-reading in match_calibration_grid
         self._preloaded_images = np.empty((self.ncameras, n_planes), dtype=object)
 
-    def preprocess_images(self, enhance_contrast: str = 'equalizeHist', filter_method: str = 'FFT', img_output_return: bool = False, denoise_method: str = 'nlmeans'):
+    def preprocess_images(self, enhance_contrast: str = 'equalizeHist', filter_method: str = 'FFT', img_output_return: bool = False, denoise_method: str = 'nlmeans', edge_margin: int | None = None):
         logger.info("Preprocessing images (contrast=%s, filter=%s, denoise=%s) ...", enhance_contrast, filter_method, denoise_method)
         with timed(logger, "preprocess_images (total)"):
             for cam_idx, cam in enumerate(self.cameras):
@@ -89,7 +89,7 @@ class Calibration:
                                                  enhance_contrast, self.plotting, denoise_method=denoise_method)
                     with _timed_opt(logger, self.detailed_timing, "    detect_target_points", extra_msg=f"Camera {cam} plane {idx}"):
                         self.image_points[cam_idx, idx] = detect_target_points(
-                            images[idx], self.target_point_diameter, plot=(self.plotting == 'Debug'))
+                            images[idx], self.target_point_diameter, plot=(self.plotting == 'Debug'), edge_margin=edge_margin)
                     self._preloaded_images[cam_idx, idx] = images[idx]
                     n_pts = len(self.image_points[cam_idx, idx])
                     logger.debug("    Plane %d (z=%.2f): %d points detected", idx, self.z_planes[idx], n_pts)
@@ -147,17 +147,19 @@ class Calibration:
     def set_plotting_mode(self, plotting: str = 'None'):
         self.plotting = plotting
 
-    def display_detected_points(self, cam_idx: int, plane_idx: int):
+    def display_detected_points(self, cam_idx: int, plane_idx: int, fast_draw: bool = True):
         """
         Display the image for the given camera and plane with current detected points
         and their indices. Call after preprocess_images to inspect or after removing points.
+        fast_draw=True (default) uses a faster OpenCV-based render; set False for full
+        close-pairs highlighting (slower).
         """
         image = self._preloaded_images[cam_idx, plane_idx]
         if image is None:
             logger.warning("No preloaded image for camera %d plane %d; run preprocess_images first.", cam_idx, plane_idx)
             return
         points = self.image_points[cam_idx, plane_idx]
-        visualize_detected_points(image, points, show_indices=True, camera_index=cam_idx, layer_index=plane_idx)
+        visualize_detected_points(image, points, show_indices=True, camera_index=cam_idx, layer_index=plane_idx, fast_draw=fast_draw)
 
     def remove_detected_points(self, cam_idx: int, plane_idx: int, indices_to_remove, redisplay: bool = True):
         """
