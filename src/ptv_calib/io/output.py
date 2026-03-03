@@ -56,7 +56,7 @@ def write_h5_matches(matches, filename):
 
 def write_h5_test_files(matches, folder):
     for cam_idx in range(matches.shape[0]):
-        with h5py.File(folder+f'{cam_idx+1}.h5', 'w') as f:
+        with h5py.File(folder+f'Camera{cam_idx+1}.h5', 'w') as f:
             for layer_idx in range(matches.shape[1]):
                 grp = f.create_group(f'frame{int(layer_idx):05d}')
                 data = np.vstack(matches[cam_idx, layer_idx])
